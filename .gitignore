@@ -1,0 +1,6 @@
+.env
+workflow_outputs*/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
