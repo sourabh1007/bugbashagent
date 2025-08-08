@@ -5,8 +5,9 @@ Contains the base class for all language-specific project generators.
 """
 
 import os
-from typing import Dict, List
+from typing import Dict, List, Any
 from ..file_creator import FileCreator
+from config_package.package_versions import PackageVersions
 
 
 class BaseProjectGenerator:
@@ -14,8 +15,37 @@ class BaseProjectGenerator:
     
     def __init__(self):
         self.file_creator = FileCreator()
+        self.package_versions = PackageVersions()
     
-    def generate_project(self, project_dir: str, product_name: str, scenarios: List[str], generated_content: str) -> Dict[str, str]:
+    def get_language_version(self, language: str) -> str:
+        """Get the configured runtime version for a language"""
+        return self.package_versions.get_language_version(language)
+    
+    def get_packages_for_language(self, language: str, analyzer_output: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Get combined packages: test frameworks + detected dependencies based on analyzer output"""
+        # Get test framework packages
+        test_packages = self.package_versions.get_test_packages_with_cosmosdb(language, analyzer_output)
+        
+        # Get scenario-based dependencies if analyzer output is provided
+        if analyzer_output:
+            detected_dependencies = self.package_versions.detect_dependencies_from_scenario(analyzer_output)
+            scenario_packages = detected_dependencies.get(language.lower(), {})
+            
+            # Merge test packages with detected packages
+            combined_packages = {**test_packages, **scenario_packages}
+            return combined_packages
+        else:
+            return test_packages
+    
+    def get_test_framework_for_language(self, language: str) -> str:
+        """Get the primary test framework for a language"""
+        return self.package_versions.get_primary_test_framework(language)
+    
+    def get_cosmosdb_version(self) -> str:
+        """Get the current CosmosDB version (either from analyzer or default)"""
+        return self.package_versions.get_cosmosdb_version()
+    
+    def generate_project(self, project_dir: str, product_name: str, scenarios: List[str], generated_content: str, analyzer_output: Dict[str, Any] = None) -> Dict[str, str]:
         """Generate project structure and files"""
         raise NotImplementedError("Subclasses must implement generate_project")
     

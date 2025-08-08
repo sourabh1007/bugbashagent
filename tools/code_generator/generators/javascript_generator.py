@@ -1,302 +1,161 @@
 """
-JavaScript Project Generator
+Simplified JavaScript Project Generator
 
-Generates JavaScript/Node.js projects with package.json, Jest tests, and proper project structure.
+Only creates minimal project structure, lets LLM generate actual implementation files.
+No dummy test files are created automatically.
 """
 
 import os
 import json
-from typing import Dict, List
+from typing import Dict, List, Any
 from .base_generator import BaseProjectGenerator
 
 
 class JavaScriptProjectGenerator(BaseProjectGenerator):
-    """Generator for JavaScript/Node.js projects"""
+    """Simplified generator for JavaScript/Node.js projects - no automatic test file generation"""
     
-    def generate_project(self, project_dir: str, product_name: str, scenarios: List[str], generated_content: str) -> Dict[str, str]:
-        """Generate JavaScript test project structure only"""
+    def __init__(self):
+        super().__init__()
+        self.language = 'javascript'
+    
+    def generate_project(self, project_dir: str, product_name: str, scenarios: List[str], generated_content: str, analyzer_output: Dict[str, Any] = None) -> Dict[str, str]:
+        """Generate minimal JavaScript/Node.js project structure - only essential files, no dummy tests"""
         created_files = {}
         
-        # Create package.json with only test dependencies
-        package_json = {
-            "name": f"{product_name.lower().replace(' ', '-')}-tests",
-            "version": "1.0.0",
-            "description": f"Test project for {product_name}",
-            "main": "test/index.test.js",
-            "scripts": {
-                "test": "jest",
-                "test:watch": "jest --watch",
-                "test:coverage": "jest --coverage"
-            },
-            "devDependencies": {
-                "jest": "^29.0.0",
-                "@types/jest": "^29.0.0"
-            },
-            "jest": {
-                "testEnvironment": "node",
-                "collectCoverageFrom": [
-                    "test/**/*.js"
-                ],
-                "testMatch": [
-                    "**/*.test.js"
-                ]
-            }
-        }
-        
-        package_file = os.path.join(project_dir, "package.json")
-        with open(package_file, 'w', encoding='utf-8') as f:
+        # Create essential project files for JavaScript/Node.js
+        # 1. Create package.json with common packages and configured versions
+        package_json = self._create_package_json_content(product_name)
+        package_json_file = os.path.join(project_dir, "package.json")
+        with open(package_json_file, 'w', encoding='utf-8') as f:
             json.dump(package_json, f, indent=2)
-        created_files["package"] = package_file
+        created_files["package_json"] = package_json_file
         
-        # Create test directory and test file
-        test_dir = os.path.join(project_dir, "test")
-        os.makedirs(test_dir, exist_ok=True)
+        # 2. Create .gitignore for Node.js projects
+        gitignore_content = """node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+dist/
+build/
+*.log"""
+        gitignore_file = os.path.join(project_dir, ".gitignore")
+        with open(gitignore_file, 'w', encoding='utf-8') as f:
+            f.write(gitignore_content)
+        created_files["gitignore"] = gitignore_file
         
-        test_content = self._create_test_content(product_name, scenarios)
-        test_file = os.path.join(test_dir, "scenarios.test.js")
-        with open(test_file, 'w', encoding='utf-8') as f:
-            f.write(test_content)
-        created_files["test"] = test_file
-        
-        # Create README with test instructions
+        # 3. Create README with project instructions
         readme_file = os.path.join(project_dir, "README.md")
-        readme_content = self._create_test_readme(product_name, scenarios, generated_content)
+        readme_content = self._create_project_readme(product_name, scenarios)
         with open(readme_file, 'w', encoding='utf-8') as f:
             f.write(readme_content)
         created_files["readme"] = readme_file
         
         return created_files
     
-    def _create_main_content(self, product_name: str, scenarios: List[str]) -> str:
-        """Create index.js content"""
-        return f'''/**
- * {product_name}
- * Main application entry point
- */
-
-function main() {{
-    console.log("Welcome to {product_name}!");
-    
-    // TODO: Implement scenarios:
-    {chr(10).join([f'    // - {scenario}' for scenario in scenarios])}
-    
-    console.log("Application completed successfully.");
-}}
-
-// Export for testing
-module.exports = {{ main }};
-
-// Run if this is the main module
-if (require.main === module) {{
-    main();
-}}
-'''
-    
-    def _create_test_content(self, product_name: str, scenarios: List[str]) -> str:
-        """Create self-contained test file content"""
-        return f'''/**
- * Test cases for {product_name}
- * 
- * This test suite validates all scenarios related to {product_name}.
- */
-
-describe('{product_name} Test Suite', () => {{
-    let testData;
-    
-    beforeEach(() => {{
-        // Setup test data for each test
-        testData = {{
-            scenarios: {json.dumps(scenarios)},
-            productName: '{product_name}'
-        }};
-    }});
-
-    describe('Scenario Validation Tests', () => {{
-{chr(10).join([f'''        test('{scenario}', () => {{
-            // Arrange
-            const scenarioName = '{scenario}';
-            const testInput = 'test_data_for_{scenario.lower().replace(' ', '_')}';
-            
-            // Act
-            const result = validateScenario(testInput, scenarioName);
-            
-            // Assert
-            expect(result).toBe(true);
-            expect(testData.scenarios).toContain(scenarioName);
-        }});
-''' for scenario in scenarios])}    }});
-    
-    describe('Integration Tests', () => {{
-        test('all scenarios integration test', () => {{
-            // Test that all scenarios can be processed together
-            testData.scenarios.forEach(scenario => {{
-                const result = validateScenario('integration_test_data', scenario);
-                expect(result).toBe(true);
-            }});
-            
-            expect(testData.scenarios).toHaveLength({len(scenarios)});
-        }});
+    def _create_package_json_content(self, product_name: str) -> dict:
+        """Create package.json content with configured package versions"""
+        packages = self.get_packages_for_language(self.language)
+        node_version = self.get_language_version('node')
         
-        test('product name validation', () => {{
-            expect(testData.productName).toBe('{product_name}');
-            expect(testData.productName.length).toBeGreaterThan(0);
-        }});
-    }});
-    
-    describe('Edge Case Tests', () => {{
-        test('validates scenario with invalid inputs', () => {{
-            // Test with null/undefined inputs
-            expect(validateScenario(null, 'valid_scenario')).toBe(false);
-            expect(validateScenario('valid_data', null)).toBe(false);
-            expect(validateScenario(undefined, 'valid_scenario')).toBe(false);
-            expect(validateScenario('valid_data', undefined)).toBe(false);
-            
-            // Test with empty strings
-            expect(validateScenario('', 'valid_scenario')).toBe(false);
-            expect(validateScenario('valid_data', '')).toBe(false);
-        }});
+        # Separate dependencies and devDependencies
+        dependencies = {}
+        dev_dependencies = {}
         
-        test('handles edge case inputs gracefully', () => {{
-            // Test with various edge case inputs
-            expect(validateScenario('   ', 'scenario')).toBe(false); // whitespace only
-            expect(validateScenario('data', '   ')).toBe(false); // whitespace only
-            expect(validateScenario(123, 'scenario')).toBe(false); // non-string input
-            expect(validateScenario('data', 123)).toBe(false); // non-string scenario
-        }});
-    }});
-    
-    describe('Parameterized Tests', () => {{
-        test.each({json.dumps(scenarios)})(
-            'parameterized test for scenario: %s',
-            (scenario) => {{
-                expect(typeof scenario).toBe('string');
-                expect(scenario.length).toBeGreaterThan(0);
-                
-                const result = validateScenario(`test_data_for_${{scenario}}`, scenario);
-                expect(result).toBe(true);
-            }}
-        );
-    }});
-    
-    describe('Test Utilities', () => {{
-        test('scenario count matches expected', () => {{
-            expect(testData.scenarios).toHaveLength({len(scenarios)});
-            expect(Array.isArray(testData.scenarios)).toBe(true);
-        }});
+        # Get test packages from configuration to determine dev dependencies
+        test_packages_config = self.package_versions.get_test_packages_for_language(self.language)
+        test_package_names = set(test_packages_config.keys())
         
-        test('all scenarios are strings', () => {{
-            testData.scenarios.forEach(scenario => {{
-                expect(typeof scenario).toBe('string');
-                expect(scenario.length).toBeGreaterThan(0);
-            }});
-        }});
-    }});
-}});
-
-/**
- * Helper function to validate scenarios
- * In a real test project, this would test actual business logic
- * 
- * @param {{string|any}} testData - The test data to validate
- * @param {{string|any}} scenario - The scenario name being tested
- * @returns {{boolean}} - True if validation passes, false otherwise
- */
-function validateScenario(testData, scenario) {{
-    // Handle null/undefined inputs
-    if (testData == null || scenario == null) {{
-        return false;
-    }}
+        # Additional dev packages (non-test related)
+        additional_dev_packages = {'nodemon', 'eslint', 'prettier', 'typescript', '@types/node'}
+        
+        for package_name, version in packages.items():
+            # Check if it's a test package or additional dev package
+            if package_name in test_package_names or package_name in additional_dev_packages:
+                dev_dependencies[package_name] = version
+            else:
+                dependencies[package_name] = version
+        
+        return {
+            "name": f"{product_name.lower().replace(' ', '-')}",
+            "version": "1.0.0",
+            "description": f"{product_name} - JavaScript/Node.js Application",
+            "main": "index.js",
+            "engines": {
+                "node": f">={node_version}.0.0"
+            },
+            "scripts": {
+                "start": "node index.js",
+                "dev": "nodemon index.js",
+                "build": "echo 'Build process will be implemented based on requirements'",
+                "test": f"{self.get_test_framework_for_language(self.language)}",
+                "test:watch": f"{self.get_test_framework_for_language(self.language)} --watch",
+                "test:coverage": f"{self.get_test_framework_for_language(self.language)} --coverage",
+                "lint": "eslint .",
+                "lint:fix": "eslint . --fix",
+                "format": "prettier --write ."
+            },
+            "keywords": ["application", "nodejs"],
+            "author": "",
+            "license": "ISC",
+            "dependencies": dependencies,
+            "devDependencies": dev_dependencies
+        }
     
-    // Handle non-string inputs
-    if (typeof testData !== 'string' || typeof scenario !== 'string') {{
-        return false;
-    }}
-    
-    // Handle empty or whitespace-only strings
-    if (testData.trim().length === 0 || scenario.trim().length === 0) {{
-        return false;
-    }}
-    
-    // Mock validation logic - in real tests this would contain actual business logic
-    return true;
-}}
+    def _create_project_readme(self, product_name: str, scenarios: List[str]) -> str:
+        """Create project README"""
+        package_name = product_name.lower().replace(' ', '-')
+        scenarios_list = '\n'.join(f'{i+1}. **{scenario}**' for i, scenario in enumerate(scenarios))
+        
+        return f'''# {product_name} - JavaScript/Node.js Application
 
-module.exports = {{ validateScenario }};
-'''
-    
-    def _create_test_readme(self, product_name: str, scenarios: List[str], generated_content: str) -> str:
-        """Create README with test instructions"""
-        return f'''# {product_name} Test Project
+This is a JavaScript/Node.js application for **{product_name}**.
 
-This is a test-only project for {product_name} containing comprehensive test suites.
+## 📋 Functional Requirements
 
-## Setup
+{scenarios_list}
 
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
+## 🚀 Installation and Running
 
-2. Run tests:
-   ```bash
-   npm test
-   ```
+### Prerequisites
+- Node.js 16 or higher
+- npm package manager
 
-3. Run tests with coverage:
-   ```bash
-   npm run test:coverage
-   ```
-
-4. Run tests in watch mode:
-   ```bash
-   npm run test:watch
-   ```
-
-## Project Structure
-
-- `test/{product_name.lower().replace(' ', '_')}_test.js` - Main test file containing all test cases
-- `package.json` - Project configuration with test dependencies
-- `jest.config.js` - Jest test framework configuration
-
-## Test Scenarios
-
-This test project validates the following scenarios:
-
-{chr(10).join([f"- {scenario}" for scenario in scenarios])}
-
-## Generated Content Analysis
-
-The following content was analyzed to create these tests:
-
-```
-{generated_content[:500]}{'...' if len(generated_content) > 500 else ''}
+### Installation
+```bash
+# Install dependencies
+npm install
 ```
 
-## Test Categories
+### Running
+```bash
+# Run the application
+npm start
 
-### Scenario Validation Tests
-- Tests each scenario individually with specific test data
-- Validates expected behavior for each scenario
+# Run in development mode (with auto-restart)
+npm run dev
+```
 
-### Integration Tests  
-- Tests all scenarios working together
-- Validates overall system integration
+### Development
+```bash
+# Build the project (when build process is defined)
+npm run build
 
-### Edge Case Tests
-- Tests with invalid inputs (null, undefined, empty strings)
-- Tests with edge case data
+# Run tests (when test files are created)
+npm test
+```
 
-### Parameterized Tests
-- Uses Jest's test.each for data-driven testing
-- Runs the same test logic across all scenarios
+## 📖 Project Overview
 
-## Requirements
+This project implements the functional requirements listed above using JavaScript/Node.js.
 
-- Node.js 16+ 
-- Jest testing framework
-- All dependencies listed in package.json
+Real implementation files will be created only when the LLM generates actual, meaningful code.
+No dummy or placeholder test files are automatically created.
 
-## Notes
-
-This is a test-only project designed to validate the functionality described in the analyzed scenarios. It contains comprehensive test coverage including unit tests, integration tests, and edge case testing.
+---
+*Generated for {product_name}*
 '''

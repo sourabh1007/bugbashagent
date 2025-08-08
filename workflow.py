@@ -2,7 +2,7 @@ from typing import List, Dict, Any
 import os
 import json
 from datetime import datetime
-from agents import CodeGenerator, DocumentAnalyzer, CodeExecutor
+from agents import CodeGenerator, DocumentAnalyzer
 
 
 class AgentWorkflow:
@@ -18,8 +18,7 @@ class AgentWorkflow:
         """Initialize all agents in the workflow"""
         return [
             DocumentAnalyzer(self.llm),
-            CodeGenerator(self.llm),
-            CodeExecutor(self.llm)
+            CodeGenerator(self.llm)
         ]
     
     def _create_output_folder(self) -> str:

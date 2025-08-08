@@ -1,7 +1,7 @@
 """
 Generic Project Generator
 
-Generates projects for languages not specifically supported with dedicated generators.
+Generates projects for languages that don't have dedicated generators or need generic fallback support.
 """
 
 import os
@@ -66,9 +66,12 @@ class GenericProjectGenerator(BaseProjectGenerator):
             return self._create_generic_test_content(product_name, scenarios, language)
     
     def _create_java_test_content(self, product_name: str, scenarios: List[str]) -> str:
-        """Create Java test content"""
+        """Create Java test content using configured test framework"""
         class_name = product_name.replace(' ', '')
-        return f'''import org.junit.jupiter.api.Test;
+        test_framework = self.get_test_framework_for_language('java')
+        
+        if test_framework == 'junit5':
+            return f'''import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import static org.junit.jupiter.api.Assertions.*;
@@ -100,6 +103,25 @@ public class {class_name}Test {{
     
     private boolean validateScenario(String testData, String scenario) {{
         // Mock validation logic
+        return testData != null && !testData.isEmpty() && 
+               scenario != null && !scenario.isEmpty();
+    }}
+}}'''
+        else:
+            # Fallback for other test frameworks or generic case
+            return f'''// Test cases for {product_name}
+// Using {test_framework} test framework
+public class {class_name}Test {{
+    
+{chr(10).join([f'''    // Test: {scenario}
+    public void test{scenario.replace(' ', '').replace('-', '')}() {{
+        String testData = "test_data_for_{scenario.lower().replace(' ', '_')}";
+        boolean result = validateScenario(testData, "{scenario}");
+        // Add assertions based on test framework
+    }}
+''' for scenario in scenarios])}
+    
+    private boolean validateScenario(String testData, String scenario) {{
         return testData != null && !testData.isEmpty() && 
                scenario != null && !scenario.isEmpty();
     }}

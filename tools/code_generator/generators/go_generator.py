@@ -1,7 +1,8 @@
 """
-Go Project Generator
+Simplified Go Project Generator
 
-Generates Go test projects with proper Go testing conventions.
+Only creates minimal project structure, lets LLM generate actual implementation files.
+No dummy test files are created automatically.
 """
 
 import os
@@ -10,242 +11,139 @@ from .base_generator import BaseProjectGenerator
 
 
 class GoProjectGenerator(BaseProjectGenerator):
-    """Generator for Go test projects"""
+    """Simplified generator for Go projects - no automatic test file generation"""
+    
+    def __init__(self):
+        super().__init__()
+        self.language = 'go'
     
     def generate_project(self, project_dir: str, product_name: str, scenarios: List[str], generated_content: str) -> Dict[str, str]:
-        """Generate Go test project structure"""
+        """Generate minimal Go project structure - only essential files, no dummy tests"""
         created_files = {}
         
-        # Create go.mod file
-        module_name = product_name.lower().replace(' ', '_').replace('-', '_')
-        go_mod_content = self._create_go_mod(module_name)
+        # Create essential project files for Go
+        # 1. Create go.mod file (essential for Go projects)
+        module_name = product_name.lower().replace(' ', '-').replace('_', '-')
+        go_mod_content = self._create_go_mod_content(module_name)
         go_mod_file = os.path.join(project_dir, "go.mod")
         with open(go_mod_file, 'w', encoding='utf-8') as f:
             f.write(go_mod_content)
         created_files["go_mod"] = go_mod_file
         
-        # Create main test file
-        test_content = self._create_test_content(product_name, scenarios)
-        test_file = os.path.join(project_dir, f"{module_name}_test.go")
-        with open(test_file, 'w', encoding='utf-8') as f:
-            f.write(test_content)
-        created_files["test"] = test_file
+        # 2. Create .gitignore for Go projects
+        gitignore_content = """# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Dependency directories
+vendor/
+
+# Go workspace file
+go.work"""
+        gitignore_file = os.path.join(project_dir, ".gitignore")
+        with open(gitignore_file, 'w', encoding='utf-8') as f:
+            f.write(gitignore_content)
+        created_files["gitignore"] = gitignore_file
         
-        # Create README with test instructions
-        readme_content = self._create_readme(product_name, scenarios, generated_content)
+        # 3. Create README with project instructions
         readme_file = os.path.join(project_dir, "README.md")
+        readme_content = self._create_project_readme(product_name, module_name, scenarios)
         with open(readme_file, 'w', encoding='utf-8') as f:
             f.write(readme_content)
         created_files["readme"] = readme_file
         
         return created_files
     
-    def _create_go_mod(self, module_name: str) -> str:
-        """Create go.mod file content"""
+    def _create_go_mod_content(self, module_name: str) -> str:
+        """Create go.mod file content with common Go dependencies"""
+        go_version = self.get_language_version('go')
+        packages = self.get_packages_for_language(self.language)
+        
+        require_lines = []
+        for package_name, version in packages.items():
+            # Format Go import path with version
+            if '/' in package_name:
+                require_lines.append(f"    {package_name} {version}")
+            else:
+                require_lines.append(f"    github.com/{package_name} {version}")
+        
+        require_section = '\n'.join(require_lines)
+        
         return f'''module {module_name}
 
-go 1.21
+go {go_version}
 
 require (
-    github.com/stretchr/testify v1.8.4
-)
-'''
+{require_section}
+)'''
     
-    def _create_test_content(self, product_name: str, scenarios: List[str]) -> str:
-        """Create Go test file content"""
-        package_name = product_name.lower().replace(' ', '_').replace('-', '_')
+    def _create_project_readme(self, product_name: str, module_name: str, scenarios: List[str]) -> str:
+        """Create project README"""
+        scenarios_list = '\n'.join(f'{i+1}. **{scenario}**' for i, scenario in enumerate(scenarios))
         
-        return f'''package {package_name}
+        return f'''# {product_name} - Go Application
 
-import (
-    "strings"
-    "testing"
-    "github.com/stretchr/testify/assert"
-)
+This is a Go application for **{product_name}**.
 
-// validateScenario simulates validation logic for testing scenarios
-func validateScenario(testData, scenario string) bool {{
-    return len(strings.TrimSpace(testData)) > 0 && len(strings.TrimSpace(scenario)) > 0
-}}
+## 📋 Functional Requirements
 
-{chr(10).join([f'''// Test{scenario.replace(' ', '').replace('-', '').replace('_', '')} tests the "{scenario}" scenario
-func Test{scenario.replace(' ', '').replace('-', '').replace('_', '')}(t *testing.T) {{
-    // Arrange
-    testData := "test_data_for_{scenario.lower().replace(' ', '_').replace('-', '_')}"
-    scenario := "{scenario}"
-    
-    // Act
-    result := validateScenario(testData, scenario)
-    
-    // Assert
-    assert.True(t, result, "Scenario '%s' should pass validation", scenario)
-    assert.NotEmpty(t, testData, "Test data should not be empty")
-    assert.NotEmpty(t, scenario, "Scenario should not be empty")
-}}
-''' for scenario in scenarios])}
+{scenarios_list}
 
-// TestAllScenariosIntegration tests all scenarios working together
-func TestAllScenariosIntegration(t *testing.T) {{
-    scenarios := []string{{
-{chr(10).join([f'        "{scenario}",' for scenario in scenarios])}
-    }}
-    
-    for _, scenario := range scenarios {{
-        t.Run(scenario, func(t *testing.T) {{
-            testData := "integration_test_data"
-            result := validateScenario(testData, scenario)
-            
-            assert.True(t, result, "Integration test failed for scenario: %s", scenario)
-        }})
-    }}
-}}
+## 🚀 Building and Running
 
-// TestEdgeCases tests various edge cases
-func TestEdgeCases(t *testing.T) {{
-    testCases := []struct {{
-        name     string
-        testData string
-        scenario string
-        expected bool
-    }}{{
-        {{"empty test data", "", "valid_scenario", false}},
-        {{"empty scenario", "valid_data", "", false}},
-        {{"whitespace only test data", "   ", "valid_scenario", false}},
-        {{"whitespace only scenario", "valid_data", "   ", false}},
-        {{"valid inputs", "valid_data", "valid_scenario", true}},
-    }}
-    
-    for _, tc := range testCases {{
-        t.Run(tc.name, func(t *testing.T) {{
-            result := validateScenario(tc.testData, tc.scenario)
-            assert.Equal(t, tc.expected, result, "Test case '%s' failed", tc.name)
-        }})
-    }}
-}}
+### Prerequisites
+- Go 1.21 or higher
 
-// TestScenarioCount validates the expected number of scenarios
-func TestScenarioCount(t *testing.T) {{
-    expectedCount := {len(scenarios)}
-    scenarios := []string{{
-{chr(10).join([f'        "{scenario}",' for scenario in scenarios])}
-    }}
-    
-    assert.Len(t, scenarios, expectedCount, "Should have exactly %d scenarios", expectedCount)
-    
-    // Validate all scenarios are non-empty strings
-    for i, scenario := range scenarios {{
-        assert.NotEmpty(t, scenario, "Scenario at index %d should not be empty", i)
-        assert.IsType(t, "", scenario, "Scenario at index %d should be a string", i)
-    }}
-}}
-
-// BenchmarkValidateScenario benchmarks the validateScenario function
-func BenchmarkValidateScenario(b *testing.B) {{
-    testData := "benchmark_test_data"
-    scenario := "benchmark_scenario"
-    
-    b.ResetTimer()
-    for i := 0; i < b.N; i++ {{
-        validateScenario(testData, scenario)
-    }}
-}}
-'''
-    
-    def _create_readme(self, product_name: str, scenarios: List[str], generated_content: str) -> str:
-        """Create README with test instructions"""
-        module_name = product_name.lower().replace(' ', '_').replace('-', '_')
-        
-        return f'''# {product_name} Test Project
-
-This is a test-only Go project for {product_name} using Go's built-in testing framework and testify assertions.
-
-## Setup
-
-1. Ensure Go 1.21+ is installed
-2. Initialize the module:
-   ```bash
-   go mod init {module_name}
-   go mod tidy
-   ```
-
-## Running Tests
-
+### Building
 ```bash
-# Run all tests
-go test
+# Initialize module (if needed)
+go mod init {module_name}
+
+# Download dependencies
+go mod tidy
+
+# Build the project
+go build
+
+# Run the application
+go run main.go
+
+# Or run the built binary
+./{module_name}    # On Linux/macOS
+./{module_name}.exe # On Windows
+```
+
+### Development
+```bash
+# Format code
+go fmt ./...
+
+# Run tests (when test files are created)
+go test ./...
 
 # Run tests with verbose output
-go test -v
+go test -v ./...
 
-# Run tests with coverage
-go test -cover
-
-# Run tests with detailed coverage report
-go test -coverprofile=coverage.out
-go tool cover -html=coverage.out
-
-# Run specific test
-go test -run TestSpecificScenario
-
-# Run benchmarks
-go test -bench=.
+# Check for race conditions
+go test -race ./...
 ```
 
-## Project Structure
+## 📖 Project Overview
 
-- `go.mod` - Go module definition with dependencies
-- `{module_name}_test.go` - Main test file containing all test cases
-- `README.md` - This file with instructions
+This project implements the functional requirements listed above using Go.
 
-## Test Scenarios
+Real implementation files will be created only when the LLM generates actual, meaningful code.
+No dummy or placeholder test files are automatically created.
 
-This test project validates the following scenarios:
-
-{chr(10).join([f"- {scenario}" for scenario in scenarios])}
-
-## Generated Content Analysis
-
-The following content was analyzed to create these tests:
-
-```
-{generated_content[:500]}{'...' if len(generated_content) > 500 else ''}
-```
-
-## Test Categories
-
-### Scenario Validation Tests
-- Individual tests for each scenario with specific test data
-- Uses testify assertions for better error messages
-
-### Integration Tests  
-- Tests all scenarios working together using subtests
-- Validates overall system integration
-
-### Edge Case Tests
-- Table-driven tests with various edge cases
-- Tests invalid inputs (empty, whitespace-only)
-
-### Benchmark Tests
-- Performance benchmarks for validation functions
-- Helps identify performance bottlenecks
-
-## Go Testing Best Practices
-
-This project follows Go testing conventions:
-- Test functions start with `Test`
-- Benchmark functions start with `Benchmark`
-- Uses `testing.T` for test functions
-- Uses `testing.B` for benchmark functions
-- Leverages testify for enhanced assertions
-- Uses table-driven tests for edge cases
-- Includes subtests for better organization
-
-## Dependencies
-
-- **testify**: Enhanced assertions and test utilities
-- **Go 1.21+**: Required Go version
-
-## Notes
-
-This is a test-only project designed to validate the functionality described in the analyzed scenarios. No main application code is generated - only comprehensive test coverage using Go's excellent built-in testing tools.
+---
+*Generated for {product_name}*
 '''

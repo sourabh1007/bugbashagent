@@ -1,12 +1,8 @@
 """
-Java Project Generator
+Simplified Java Project Generator
 
-Generates Java test projects wi     <packaging>jar</packaging>
-    
-    <name>{product_name} Tests</name>
-    <description>Test project for {product_name}</description>
-    <name>{product_name} Tests</name>
-    <description>Test project for {product_name}</description>Maven and JUnit 5.
+Only creates minimal project structure, lets LLM generate actual implementation files.
+No dummy test files are created automatically.
 """
 
 import os
@@ -15,45 +11,146 @@ from .base_generator import BaseProjectGenerator
 
 
 class JavaProjectGenerator(BaseProjectGenerator):
-    """Generator for Java test projects"""
+    """Simplified generator for Java projects - no automatic test file generation"""
+    
+    def __init__(self):
+        super().__init__()
+        self.language = 'java'
     
     def generate_project(self, project_dir: str, product_name: str, scenarios: List[str], generated_content: str) -> Dict[str, str]:
-        """Generate Java test project structure only"""
+        """Generate minimal Java project structure - only essential files, no dummy tests"""
         created_files = {}
         
-        # Sanitize project name for Java package
-        package_name = self._sanitize_name(product_name).lower()
-        class_name = self._sanitize_name(product_name)
-        
-        # Create Maven test directory structure only
-        src_test_java = os.path.join(project_dir, "src", "test", "java", "com", "example", package_name)
-        os.makedirs(src_test_java, exist_ok=True)
-        
-        # Create pom.xml for test project only
-        pom_content = self._create_test_pom_xml(package_name, product_name)
+        # Create essential project files for Java
+        # 1. Create pom.xml for Maven project
+        pom_content = self._create_pom_xml_content(product_name)
         pom_file = os.path.join(project_dir, "pom.xml")
         with open(pom_file, 'w', encoding='utf-8') as f:
             f.write(pom_content)
         created_files["pom"] = pom_file
         
-        # Create test class only
-        test_content = self._create_test_content(package_name, class_name, scenarios)
-        test_file = os.path.join(src_test_java, f"{class_name}Test.java")
-        with open(test_file, 'w', encoding='utf-8') as f:
-            f.write(test_content)
-        created_files["test_class"] = test_file
+        # 2. Create src directory structure
+        src_main_java = os.path.join(project_dir, "src", "main", "java")
+        os.makedirs(src_main_java, exist_ok=True)
         
-        # Create README with test instructions
+        # 3. Create .gitignore for Java projects
+        gitignore_content = """target/
+*.class
+*.jar
+*.war
+.classpath
+.project
+.settings/
+*.iml
+.idea/"""
+        gitignore_file = os.path.join(project_dir, ".gitignore")
+        with open(gitignore_file, 'w', encoding='utf-8') as f:
+            f.write(gitignore_content)
+        created_files["gitignore"] = gitignore_file
+        
+        # 4. Create README with project instructions
         readme_file = os.path.join(project_dir, "README.md")
-        readme_content = self._create_test_readme(package_name, product_name, class_name, scenarios, generated_content)
+        readme_content = self._create_project_readme(product_name, scenarios)
         with open(readme_file, 'w', encoding='utf-8') as f:
             f.write(readme_content)
         created_files["readme"] = readme_file
         
         return created_files
     
-    def _create_test_pom_xml(self, package_name: str, product_name: str) -> str:
-        """Create Maven pom.xml for test project only"""
+    def _create_pom_xml_content(self, product_name: str) -> str:
+        """Create pom.xml for Maven project with common dependencies"""
+        artifact_id = product_name.lower().replace(' ', '-')
+        java_version = self.get_language_version('java')
+        packages = self.get_packages_for_language(self.language)
+        
+        # Create properties section
+        properties_xml = []
+        properties_xml.append(f"        <maven.compiler.source>{java_version}</maven.compiler.source>")
+        properties_xml.append(f"        <maven.compiler.target>{java_version}</maven.compiler.target>")
+        properties_xml.append("        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>")
+        
+        for prop_name, prop_version in packages.items():
+            if prop_name.endswith('.version'):
+                properties_xml.append(f"        <{prop_name}>{prop_version}</{prop_name}>")
+        
+        # Create dependencies section
+        dependencies_xml = []
+        
+        # Core utilities
+        dependencies_xml.append(f'''        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>${{commons-lang3.version}}</version>
+        </dependency>''')
+        
+        # JSON processing
+        dependencies_xml.append(f'''        
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${{jackson.version}}</version>
+        </dependency>''')
+        
+        # HTTP client
+        dependencies_xml.append(f'''        
+        <dependency>
+            <groupId>org.apache.httpcomponents.client5</groupId>
+            <artifactId>httpclient5</artifactId>
+            <version>${{httpclient5.version}}</version>
+        </dependency>''')
+        
+        # Logging
+        dependencies_xml.append(f'''        
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${{slf4j.version}}</version>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>${{logback.version}}</version>
+        </dependency>''')
+        
+        # Configuration
+        dependencies_xml.append(f'''        
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>${{snakeyaml.version}}</version>
+        </dependency>''')
+        
+        # Testing dependencies - use only configured test packages
+        test_packages = self.package_versions.get_test_packages_for_language(self.language)
+        for package_key, version in test_packages.items():
+            if package_key == 'junit.version':
+                dependencies_xml.append(f'''        
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>${{{package_key}}}</version>
+            <scope>test</scope>
+        </dependency>''')
+            elif package_key == 'mockito.version':
+                dependencies_xml.append(f'''        
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>${{{package_key}}}</version>
+            <scope>test</scope>
+        </dependency>''')
+            elif package_key == 'assertj.version':
+                dependencies_xml.append(f'''        
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <version>${{{package_key}}}</version>
+            <scope>test</scope>
+        </dependency>''')
+        
+        properties_section = '\n'.join(properties_xml)
+        dependencies_section = '\n'.join(dependencies_xml)
+        
         return f'''<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -62,42 +159,19 @@ class JavaProjectGenerator(BaseProjectGenerator):
     <modelVersion>4.0.0</modelVersion>
     
     <groupId>com.example</groupId>
-    <artifactId>{package_name}-tests</artifactId>
+    <artifactId>{artifact_id}</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
     
-        <name>{product_name} Tests</name>
-    <description>Test project for {product_name}</description>
+    <name>{product_name}</name>
+    <description>{product_name} - Java Application</description>
     
     <properties>
-        <maven.compiler.source>11</maven.compiler.source>
-        <maven.compiler.target>11</maven.compiler.target>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <junit.version>5.8.2</junit.version>
-        <maven.compiler.testSource>11</maven.compiler.testSource>
-        <maven.compiler.testTarget>11</maven.compiler.testTarget>
+{properties_section}
     </properties>
     
     <dependencies>
-        <!-- JUnit 5 for testing -->
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-engine</artifactId>
-            <version>${{junit.version}}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-api</artifactId>
-            <version>${{junit.version}}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-params</artifactId>
-            <version>${{junit.version}}</version>
-            <scope>test</scope>
-        </dependency>
+{dependencies_section}
     </dependencies>
     
     <build>
@@ -107,259 +181,75 @@ class JavaProjectGenerator(BaseProjectGenerator):
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.11.0</version>
                 <configuration>
-                    <source>11</source>
-                    <target>11</target>
-                    <testSource>11</testSource>
-                    <testTarget>11</testTarget>
+                    <source>17</source>
+                    <target>17</target>
                 </configuration>
             </plugin>
-            
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.0.0</version>
+                <artifactId>maven-exec-plugin</artifactId>
+                <version>3.1.0</version>
                 <configuration>
-                    <includes>
-                        <include>**/*Test.java</include>
-                        <include>**/*Tests.java</include>
-                    </includes>
+                    <mainClass>com.example.Main</mainClass>
                 </configuration>
             </plugin>
         </plugins>
     </build>
-</project>
-'''
+</project>'''
     
-    def _create_test_content(self, package_name: str, class_name: str, scenarios: List[str]) -> str:
-        """Create self-contained test class content"""
-        return f'''package com.example.{package_name};
+    def _create_project_readme(self, product_name: str, scenarios: List[str]) -> str:
+        """Create project README"""
+        artifact_id = product_name.lower().replace(' ', '-')
+        scenarios_list = '\n'.join(f'{i+1}. **{scenario}**' for i, scenario in enumerate(scenarios))
+        
+        return f'''# {product_name} - Java Application
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
-import static org.junit.jupiter.api.Assertions.*;
+This is a Java application for **{product_name}**.
 
-/**
- * Test class for {class_name}
- * This class contains self-contained tests for all scenarios
- */
-@DisplayName("{class_name} Test Suite")
-public class {class_name}Test {{
-    
-    @BeforeEach
-    void setUp() {{
-        // Setup test data for {class_name} scenarios
-    }}
+## 📋 Functional Requirements
 
-{chr(10).join([f'''    @Test
-    @DisplayName("Test: {scenario}")
-    void test{scenario.replace(' ', '').replace('-', '').replace('_', '')}() {{
-        // Test case for scenario: {scenario}
-        // This is a self-contained test that validates the scenario
-        
-        // Arrange
-        String testData = "test input for {scenario}";
-        String scenario = "{scenario}";
-        
-        // Act
-        boolean result = validateScenario(testData, scenario);
-        
-        // Assert
-        assertTrue(result, "Scenario '" + scenario + "' should be validated successfully");
-        assertNotNull(testData, "Test data should not be null");
-        assertFalse(testData.isEmpty(), "Test data should not be empty");
-    }}
-''' for scenario in scenarios])}
-    
-    /**
-     * Helper method to validate scenarios
-     * This simulates the logic that would be tested in a real application
-     */
-    private boolean validateScenario(String input, String scenario) {{
-        // Mock implementation for testing scenario validation
-        // In a real project, this would test actual business logic
-        
-        return input != null && !input.trim().isEmpty() && 
-               scenario != null && !scenario.trim().isEmpty();
-    }}
-    
-    @Test
-    @DisplayName("Integration test for all scenarios")
-    void testAllScenariosIntegration() {{
-        // Integration test for all scenarios
-        String[] scenarios = {{{', '.join([f'"{scenario}"' for scenario in scenarios])}}};
-        
-        for (String scenario : scenarios) {{
-            String testData = "integration test data for " + scenario;
-            boolean result = validateScenario(testData, scenario);
-            assertTrue(result, "Integration test failed for scenario: " + scenario);
-        }}
-        
-        assertEquals({len(scenarios)}, scenarios.length, "Should have exactly {len(scenarios)} scenarios");
-    }}
-    
-    @Test
-    @DisplayName("Edge cases validation")
-    void testEdgeCases() {{
-        // Test edge cases
-        assertFalse(validateScenario(null, "valid scenario"), "Should handle null input");
-        assertFalse(validateScenario("valid input", null), "Should handle null scenario");
-        assertFalse(validateScenario("", "valid scenario"), "Should handle empty input");
-        assertFalse(validateScenario("valid input", ""), "Should handle empty scenario");
-        assertFalse(validateScenario("   ", "valid scenario"), "Should handle whitespace-only input");
-        assertFalse(validateScenario("valid input", "   "), "Should handle whitespace-only scenario");
-        
-        // Test valid case
-        assertTrue(validateScenario("valid input", "valid scenario"), "Should handle valid inputs");
-    }}
-    
-    @ParameterizedTest
-    @DisplayName("Parameterized test for scenarios")
-    @ValueSource(strings = {{{', '.join([f'"{scenario}"' for scenario in scenarios])}}})
-    void testParameterizedScenarios(String scenario) {{
-        // Parameterized test for each scenario
-        String testData = "parameterized test data for " + scenario;
-        boolean result = validateScenario(testData, scenario);
-        
-        assertTrue(result, "Parameterized test failed for scenario: " + scenario);
-        assertNotNull(scenario, "Scenario should not be null");
-        assertFalse(scenario.trim().isEmpty(), "Scenario should not be empty");
-    }}
-    
-    @Test
-    @DisplayName("Scenario count validation")
-    void testScenarioCount() {{
-        String[] scenarios = {{{', '.join([f'"{scenario}"' for scenario in scenarios])}}};
-        
-        assertEquals({len(scenarios)}, scenarios.length, "Should have exactly {len(scenarios)} scenarios");
-        
-        // Validate each scenario is valid
-        for (int i = 0; i < scenarios.length; i++) {{
-            assertNotNull(scenarios[i], "Scenario at index " + i + " should not be null");
-            assertFalse(scenarios[i].trim().isEmpty(), "Scenario at index " + i + " should not be empty");
-        }}
-    }}
-}}
-'''
-    
-    def _create_test_readme(self, package_name: str, product_name: str, class_name: str, scenarios: List[str], generated_content: str) -> str:
-        """Create README with test instructions"""
-        return f'''# {product_name} Test Project
+{scenarios_list}
 
-This is a test-only Java project for {product_name} using Maven and JUnit 5.
+## 🚀 Building and Running
 
-## Setup
+### Prerequisites
+- Java 17 or higher
+- Maven 3.8 or higher
 
-1. Ensure Java 11+ is installed
-2. Ensure Maven 3.6+ is installed
-3. Build the project:
-   ```bash
-   mvn clean compile test-compile
-   ```
-
-## Running Tests
-
+### Building
 ```bash
-# Run all tests
-mvn test
+# Compile the project
+mvn compile
 
-# Run tests with detailed output
-mvn test -Dtest={class_name}Test
-
-# Run specific test method
-mvn test -Dtest={class_name}Test#testSpecificScenario
-
-# Run tests with coverage (requires jacoco plugin)
-mvn clean test jacoco:report
-
-# Generate test report
-mvn surefire-report:report
+# Package into JAR
+mvn package
 ```
 
-## Project Structure
-
-- `pom.xml` - Maven configuration with JUnit 5 dependencies
-- `src/test/java/com/example/{package_name}/{class_name}Test.java` - Main test class
-- `README.md` - This file with instructions
-
-## Test Scenarios
-
-This test project validates the following scenarios:
-
-{chr(10).join([f"- {scenario}" for scenario in scenarios])}
-
-## Generated Content Analysis
-
-The following content was analyzed to create these tests:
-
-```
-{generated_content[:500]}{'...' if len(generated_content) > 500 else ''}
-```
-
-## Test Categories
-
-### Scenario Validation Tests
-- Individual JUnit 5 tests for each scenario with specific test data
-- Uses JUnit 5 assertions and DisplayName annotations
-
-### Integration Tests  
-- Tests all scenarios working together
-- Validates overall system integration
-
-### Edge Case Tests
-- Tests with invalid inputs (null, empty, whitespace)
-- Comprehensive boundary testing
-
-### Parameterized Tests
-- Uses JUnit 5 @ParameterizedTest for data-driven testing
-- Tests all scenarios with the same test logic
-
-## Maven Commands
-
+### Running
 ```bash
-# Clean and compile
+# Run the application
+mvn exec:java
+
+# Or run the JAR file
+java -jar target/{artifact_id}-1.0.0.jar
+```
+
+### Development
+```bash
+# Clean build
 mvn clean compile
 
-# Run tests only
+# Run tests (when test files are created)
 mvn test
-
-# Skip tests during build
-mvn clean install -DskipTests
-
-# Run tests with specific pattern
-mvn test -Dtest="*Test"
-
-# Generate dependency tree
-mvn dependency:tree
-
-# Check for updates
-mvn versions:display-dependency-updates
 ```
 
-## Dependencies
+## 📖 Project Overview
 
-- **JUnit 5**: Modern testing framework for Java
-- **Maven Surefire Plugin**: Test execution
-- **Maven Compiler Plugin**: Java compilation
-- **Java 11+**: Required Java version
+This project implements the functional requirements listed above using Java 17 and Maven.
 
-## Notes
+Real implementation files will be created only when the LLM generates actual, meaningful code.
+No dummy or placeholder test files are automatically created.
 
-This is a test-only project designed to validate the functionality described in the analyzed scenarios. No main application code is generated - only comprehensive test coverage using modern Java testing practices with JUnit 5.
-
-The project follows Maven standard directory layout with tests in `src/test/java`.
+---
+*Generated for {product_name}*
 '''
-    
-    def _sanitize_name(self, name: str) -> str:
-        """Sanitize name to be valid Java identifier"""
-        # Remove special characters and replace with underscore
-        import re
-        sanitized = re.sub(r'[^a-zA-Z0-9_]', '', name.replace(' ', '').replace('-', ''))
-        
-        # Ensure it starts with a letter
-        if sanitized and not sanitized[0].isalpha():
-            sanitized = 'Test' + sanitized
-            
-        return sanitized if sanitized else 'TestProject'

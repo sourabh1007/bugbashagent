@@ -13,12 +13,13 @@ Each agent passes its output to the next agent in sequence.
 import os
 import sys
 from langchain_openai import AzureChatOpenAI
-from config import (
-    AZURE_OPENAI_API_KEY, 
-    AZURE_OPENAI_ENDPOINT, 
+# Import specific configuration items instead of the config module
+from config_package import (
+    AZURE_OPENAI_API_KEY,
+    AZURE_OPENAI_ENDPOINT,
     AZURE_OPENAI_API_VERSION,
     AZURE_OPENAI_DEPLOYMENT_NAME,
-    MODEL_NAME, 
+    MODEL_NAME,
     TEMPERATURE
 )
 from workflow import AgentWorkflow
@@ -38,8 +39,8 @@ def check_azure_config():
     if missing_configs:
         print("❌ Error: Missing Azure OpenAI configuration!")
         print("Please set the following in your .env file:")
-        for config in missing_configs:
-            print(f"  {config}=your_value_here")
+        for config_name in missing_configs:
+            print(f"  {config_name}=your_value_here")
         print("\nExample .env file:")
         print("AZURE_OPENAI_API_KEY=your_api_key")
         print("AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/")
@@ -133,7 +134,9 @@ def main():
         print("\n\n⏹️ Workflow interrupted by user")
         sys.exit(0)
     except Exception as e:
+        import traceback
         print(f"\n❌ Application error: {str(e)}")
+        print(f"Debug traceback: {traceback.format_exc()}")
         sys.exit(1)
 
 
