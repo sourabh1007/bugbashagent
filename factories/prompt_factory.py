@@ -99,23 +99,33 @@ Test Scenarios to implement:
 Project Setup Information:
 {{setup_info}}
 
-Your task is to generate a COMPLETE, buildable {self.language} test project with:
-- Functional test code implementation based on the given scenarios
+Your task is to generate a COMPLETE, buildable {self.language} application with:
+- Functional implementation based on the given scenarios
 - Proper project structure and naming conventions for {self.language}
 - Complete, compilation-ready code
+- **EXECUTABLE CODE**: The generated code will be automatically built and executed after generation
 
-Generate a complete test project structure with all necessary files and test implementations.
+EXECUTION REQUIREMENTS:
+- Include a clear main entry point that can be executed
+- Main execution should demonstrate all scenarios with console output
+- Handle errors gracefully with meaningful error messages
+- Show progress and completion status
 
 RESPONSE FORMAT:
-## Test Project Structure
-[List ALL files and directories needed]
+## Application Structure
+[List ALL files and directories needed for a complete, executable application]
 
-## Complete Test File Contents
-[All necessary files with complete content]
+## Complete Application Files
+[All necessary files with complete, functional content including main entry point]
 
 ## Build Instructions
 [Step-by-step build commands for {self.language}]
 
-## Test Execution
-[Commands to run all tests in {self.language}]
+## Run Instructions
+[Commands to execute the application in {self.language}]
+
+## Expected Output
+[Describe what output the application will generate when executed]
+
+Generate a COMPLETE, executable application that will be automatically run after generation.
 """

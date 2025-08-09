@@ -1,6 +1,9 @@
 from typing import Dict, Any, List
 import os
 import json
+import subprocess
+import threading
+import time
 from datetime import datetime
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
@@ -250,6 +253,15 @@ class CodeGenerator(BaseAgent):
             # Merge parsed files with project files
             project_files.update(parsed_files)
             
+            # Execute the generated code
+            execution_result = self._execute_generated_code(
+                project_files.get("project_dir", ""),
+                language,
+                product_name,
+                project_files
+            )
+            project_files["execution_result"] = execution_result
+            
             output = {
                 "agent": self.name,
                 "input": input_data,
@@ -262,6 +274,7 @@ class CodeGenerator(BaseAgent):
                 "html_test_report_path": project_files.get("html_test_report"),
                 "build_status": project_files.get("build_status"),
                 "test_status": project_files.get("test_status"),
+                "execution_result": project_files.get("execution_result"),
                 "status": "success"
             }
             
@@ -768,3 +781,338 @@ class CodeGenerator(BaseAgent):
             report["error"] = f"Failed to generate comprehensive report: {str(e)}"
         
         return report
+    
+    def _execute_generated_code(self, project_dir: str, language: str, product_name: str, project_files: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute the generated code based on language"""
+        execution_result = {
+            "executed": False,
+            "language": language,
+            "execution_method": "none",
+            "stdout": "",
+            "stderr": "",
+            "return_code": None,
+            "execution_time": 0,
+            "error": None
+        }
+        
+        if not project_dir or not os.path.exists(project_dir):
+            execution_result["error"] = "Project directory does not exist"
+            return execution_result
+        
+        try:
+            self.log(f"🚀 Starting code execution for {language} project: {product_name}")
+            start_time = time.time()
+            
+            # Change to project directory for execution
+            original_cwd = os.getcwd()
+            os.chdir(project_dir)
+            
+            try:
+                if language.lower() in ['python']:
+                    execution_result.update(self._execute_python_code(project_dir, project_files))
+                elif language.lower() in ['csharp', 'c#']:
+                    execution_result.update(self._execute_csharp_code(project_dir, project_files))
+                elif language.lower() in ['javascript', 'js', 'node.js']:
+                    execution_result.update(self._execute_javascript_code(project_dir, project_files))
+                elif language.lower() == 'java':
+                    execution_result.update(self._execute_java_code(project_dir, project_files))
+                elif language.lower() == 'go':
+                    execution_result.update(self._execute_go_code(project_dir, project_files))
+                elif language.lower() == 'rust':
+                    execution_result.update(self._execute_rust_code(project_dir, project_files))
+                else:
+                    execution_result["error"] = f"Code execution not supported for language: {language}"
+                    self.log(f"⚠️ Code execution not supported for {language}")
+            
+            finally:
+                os.chdir(original_cwd)
+            
+            execution_result["execution_time"] = time.time() - start_time
+            
+            if execution_result.get("executed", False):
+                self.log(f"✅ Code execution completed successfully in {execution_result['execution_time']:.2f}s")
+                if execution_result.get("stdout"):
+                    self.log(f"📤 Output: {execution_result['stdout'][:500]}{'...' if len(execution_result.get('stdout', '')) > 500 else ''}")
+            else:
+                self.log(f"❌ Code execution failed: {execution_result.get('error', 'Unknown error')}")
+                if execution_result.get("stderr"):
+                    self.log(f"📥 Error output: {execution_result['stderr'][:500]}{'...' if len(execution_result.get('stderr', '')) > 500 else ''}")
+            
+        except Exception as e:
+            execution_result["error"] = f"Execution failed with exception: {str(e)}"
+            self.log(f"❌ Code execution failed with exception: {str(e)}")
+        
+        return execution_result
+    
+    def _execute_python_code(self, project_dir: str, project_files: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute Python code"""
+        result = {"execution_method": "python"}
+        
+        # Look for main Python files to execute
+        main_files = []
+        for filename in os.listdir(project_dir):
+            if filename.endswith('.py') and not filename.startswith('test_'):
+                main_files.append(filename)
+        
+        if not main_files:
+            result["error"] = "No Python files found to execute"
+            return result
+        
+        # Try to find main.py or similar entry point
+        entry_file = None
+        for preferred in ['main.py', 'app.py', 'run.py']:
+            if preferred in main_files:
+                entry_file = preferred
+                break
+        
+        if not entry_file:
+            entry_file = main_files[0]  # Use first available Python file
+        
+        try:
+            # Execute the Python file
+            process = subprocess.run(
+                ['python', entry_file],
+                capture_output=True,
+                text=True,
+                timeout=30  # 30 second timeout
+            )
+            
+            result.update({
+                "executed": True,
+                "stdout": process.stdout,
+                "stderr": process.stderr,
+                "return_code": process.returncode,
+                "executed_file": entry_file
+            })
+            
+            if process.returncode == 0:
+                self.log(f"✅ Python execution successful: {entry_file}")
+            else:
+                self.log(f"⚠️ Python execution completed with warnings: {entry_file}")
+            
+        except subprocess.TimeoutExpired:
+            result["error"] = "Python execution timed out after 30 seconds"
+        except Exception as e:
+            result["error"] = f"Python execution failed: {str(e)}"
+        
+        return result
+    
+    def _execute_csharp_code(self, project_dir: str, project_files: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute C# code"""
+        result = {"execution_method": "dotnet run"}
+        
+        # Check if project was built successfully
+        if not project_files.get("build_status") == "success":
+            result["error"] = "Project not built successfully, cannot execute"
+            return result
+        
+        try:
+            # Execute using dotnet run
+            process = subprocess.run(
+                ['dotnet', 'run'],
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            
+            result.update({
+                "executed": True,
+                "stdout": process.stdout,
+                "stderr": process.stderr,
+                "return_code": process.returncode
+            })
+            
+            if process.returncode == 0:
+                self.log(f"✅ C# execution successful")
+            else:
+                self.log(f"⚠️ C# execution completed with warnings")
+            
+        except subprocess.TimeoutExpired:
+            result["error"] = "C# execution timed out after 30 seconds"
+        except Exception as e:
+            result["error"] = f"C# execution failed: {str(e)}"
+        
+        return result
+    
+    def _execute_javascript_code(self, project_dir: str, project_files: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute JavaScript/Node.js code"""
+        result = {"execution_method": "node"}
+        
+        # Look for main JavaScript files to execute
+        main_files = []
+        for filename in os.listdir(project_dir):
+            if filename.endswith('.js') and not filename.startswith('test'):
+                main_files.append(filename)
+        
+        if not main_files:
+            result["error"] = "No JavaScript files found to execute"
+            return result
+        
+        # Try to find main entry point
+        entry_file = None
+        for preferred in ['index.js', 'main.js', 'app.js', 'server.js']:
+            if preferred in main_files:
+                entry_file = preferred
+                break
+        
+        if not entry_file:
+            entry_file = main_files[0]
+        
+        try:
+            # Execute the JavaScript file
+            process = subprocess.run(
+                ['node', entry_file],
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            
+            result.update({
+                "executed": True,
+                "stdout": process.stdout,
+                "stderr": process.stderr,
+                "return_code": process.returncode,
+                "executed_file": entry_file
+            })
+            
+            if process.returncode == 0:
+                self.log(f"✅ JavaScript execution successful: {entry_file}")
+            else:
+                self.log(f"⚠️ JavaScript execution completed with warnings: {entry_file}")
+            
+        except subprocess.TimeoutExpired:
+            result["error"] = "JavaScript execution timed out after 30 seconds"
+        except Exception as e:
+            result["error"] = f"JavaScript execution failed: {str(e)}"
+        
+        return result
+    
+    def _execute_java_code(self, project_dir: str, project_files: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute Java code"""
+        result = {"execution_method": "java"}
+        
+        # Check if project was built successfully
+        if not project_files.get("build_status") == "success":
+            result["error"] = "Project not built successfully, cannot execute"
+            return result
+        
+        try:
+            # Try to run using maven if pom.xml exists
+            if os.path.exists('pom.xml'):
+                process = subprocess.run(
+                    ['mvn', 'exec:java'],
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+            else:
+                # Look for compiled .class files
+                class_files = [f for f in os.listdir(project_dir) if f.endswith('.class')]
+                if not class_files:
+                    result["error"] = "No compiled Java classes found"
+                    return result
+                
+                # Try to execute main class
+                main_class = class_files[0].replace('.class', '')
+                process = subprocess.run(
+                    ['java', main_class],
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+            
+            result.update({
+                "executed": True,
+                "stdout": process.stdout,
+                "stderr": process.stderr,
+                "return_code": process.returncode
+            })
+            
+            if process.returncode == 0:
+                self.log(f"✅ Java execution successful")
+            else:
+                self.log(f"⚠️ Java execution completed with warnings")
+            
+        except subprocess.TimeoutExpired:
+            result["error"] = "Java execution timed out after 30 seconds"
+        except Exception as e:
+            result["error"] = f"Java execution failed: {str(e)}"
+        
+        return result
+    
+    def _execute_go_code(self, project_dir: str, project_files: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute Go code"""
+        result = {"execution_method": "go run"}
+        
+        # Look for main Go files
+        main_files = [f for f in os.listdir(project_dir) if f.endswith('.go') and not f.endswith('_test.go')]
+        
+        if not main_files:
+            result["error"] = "No Go files found to execute"
+            return result
+        
+        try:
+            # Execute using go run
+            process = subprocess.run(
+                ['go', 'run'] + main_files,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            
+            result.update({
+                "executed": True,
+                "stdout": process.stdout,
+                "stderr": process.stderr,
+                "return_code": process.returncode,
+                "executed_files": main_files
+            })
+            
+            if process.returncode == 0:
+                self.log(f"✅ Go execution successful")
+            else:
+                self.log(f"⚠️ Go execution completed with warnings")
+            
+        except subprocess.TimeoutExpired:
+            result["error"] = "Go execution timed out after 30 seconds"
+        except Exception as e:
+            result["error"] = f"Go execution failed: {str(e)}"
+        
+        return result
+    
+    def _execute_rust_code(self, project_dir: str, project_files: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute Rust code"""
+        result = {"execution_method": "cargo run"}
+        
+        # Check if Cargo.toml exists
+        if not os.path.exists('Cargo.toml'):
+            result["error"] = "No Cargo.toml found, cannot execute Rust project"
+            return result
+        
+        try:
+            # Execute using cargo run
+            process = subprocess.run(
+                ['cargo', 'run'],
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            
+            result.update({
+                "executed": True,
+                "stdout": process.stdout,
+                "stderr": process.stderr,
+                "return_code": process.returncode
+            })
+            
+            if process.returncode == 0:
+                self.log(f"✅ Rust execution successful")
+            else:
+                self.log(f"⚠️ Rust execution completed with warnings")
+            
+        except subprocess.TimeoutExpired:
+            result["error"] = "Rust execution timed out after 30 seconds"
+        except Exception as e:
+            result["error"] = f"Rust execution failed: {str(e)}"
+        
+        return result

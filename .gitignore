@@ -4,3 +4,46 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+
+# VS Code temporary and test files (prevent regeneration)
+test_*.py
+debug_*.py
+analyze_*.py
+sample_*.py
+integration_*.py
+quick_*.py
+show_*.py
+*_test.py
+*_new.py
+*_old.py
+*_fixed.py
+*_simple.py
+*_clean.py
+*_demo.py
+test_document.md
+*.tmp
+*.temp
+
+# Old directories that should not be regenerated
+config/
+docs/
+examples/
+old/
+backup/
+
+# VS Code cache and temp files
+.vscode/
+*.code-workspace
+.history/
+
+# Summary and documentation files that get regenerated
+*_SUMMARY.md
+ENHANCED_*.md
+COSMOSDB_*.md
+PACKAGE_*.md
+
+# Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# Cleanup script (don't commit)
+cleanup.ps1
