@@ -23,8 +23,7 @@ from tools.code_generator import (
     JavaScriptProjectGenerator,
     JavaProjectGenerator,
     GoProjectGenerator,
-    RustProjectGenerator,
-    GenericProjectGenerator
+    RustProjectGenerator
 )
 
 # Import pattern-based components
@@ -182,16 +181,15 @@ class CodeGenerator(BaseAgent):
             
             # Log the prompt template being used
             self.log(f"📝 Using prompt template for {language}:")
-            self.log(f"Template length: {len(language_prompt_template)} characters")
-            self.log("=" * 80)
-            self.log(language_prompt_template[:500] + "..." if len(language_prompt_template) > 500 else language_prompt_template)
-            self.log("=" * 80)
+            self.log(f"📝 {language_prompt_template}:")
             
             # Create language-specific chain
             prompt_template = PromptTemplate(
                 input_variables=["language", "product_name", "version", "scenarios", "setup_info"],
-                template=language_prompt_template
+                template=language_prompt_template,
+                template_format="jinja2"
             )
+            
             chain = LLMChain(llm=self.llm, prompt=prompt_template)
             
             # Prepare the prompt variables
@@ -203,13 +201,19 @@ class CodeGenerator(BaseAgent):
                 "setup_info": setup_info_text
             }
             
-            # Log the actual prompt that will be sent to LLM
+            # Log the actual prompt that will be sent to LLM (placeholders resolved)
             try:
-                formatted_prompt = prompt_template.format(**prompt_vars)
-                self.log(f"🎯 Final prompt being sent to LLM:")
-                self.log(f"Prompt length: {len(formatted_prompt)} characters")
+                # Prefer formatting via chain.prompt if available to mirror LLMChain behavior
+                if hasattr(chain, 'prompt') and hasattr(chain.prompt, 'format'):
+                    rendered_prompt = chain.prompt.format(**prompt_vars)
+                else:
+                    rendered_prompt = prompt_template.format(**prompt_vars)
+
+                self.log("🎯 Actual prompt sent to LLM (placeholders resolved):")
+                self.log(f"Prompt length: {len(rendered_prompt)} characters")
                 self.log("🚀" * 40)
-                self.log(formatted_prompt[:1000] + "..." if len(formatted_prompt) > 1000 else formatted_prompt)
+                # Print full prompt; if extremely long, it's fine to be verbose for debugging
+                self.log(rendered_prompt)
                 self.log("🚀" * 40)
             except Exception as e:
                 self.log(f"⚠️ Could not format prompt for logging: {str(e)}")

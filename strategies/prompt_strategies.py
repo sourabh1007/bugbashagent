@@ -220,11 +220,11 @@ FOCUS: Create a complete, runnable {framework_name} application that fully imple
         test_execution = test_commands
         
         return base.format(
-            language='{language}',
-            product_name='{product_name}',
-            version='{version}',
-            scenarios='{scenarios}',
-            setup_info='{setup_info}',
+            language='{{language}}',
+            product_name='{{product_name}}',
+            version='{{version}}',
+            scenarios='{{scenarios}}',
+            setup_info='{{setup_info}}',
             language_specific_instructions=language_instructions,
             project_structure=project_structure,
             file_templates=file_templates,
@@ -345,11 +345,11 @@ FOCUS: Create a complete, runnable Java application that fully implements all sc
         test_execution = test_commands
         
         return base.format(
-            language='{language}',
-            product_name='{product_name}',
-            version='{version}',
-            scenarios='{scenarios}',
-            setup_info='{setup_info}',
+            language='{{language}}',
+            product_name='{{product_name}}',
+            version='{{version}}',
+            scenarios='{{scenarios}}',
+            setup_info='{{setup_info}}',
             language_specific_instructions=language_instructions,
             project_structure=project_structure,
             file_templates=file_templates,
@@ -486,11 +486,11 @@ FOCUS: Create a complete, runnable Python application that fully implements all 
         test_execution = test_commands
         
         return base.format(
-            language='{language}',
-            product_name='{product_name}',
-            version='{version}',
-            scenarios='{scenarios}',
-            setup_info='{setup_info}',
+            language='{{language}}',
+            product_name='{{product_name}}',
+            version='{{version}}',
+            scenarios='{{scenarios}}',
+            setup_info='{{setup_info}}',
             language_specific_instructions=language_instructions,
             project_structure=project_structure,
             file_templates=file_templates,
@@ -611,11 +611,11 @@ FOCUS: Create a complete, runnable JavaScript/Node.js application that fully imp
         test_execution = test_commands
         
         return base.format(
-            language='{language}',
-            product_name='{product_name}',
-            version='{version}',
-            scenarios='{scenarios}',
-            setup_info='{setup_info}',
+            language='{{language}}',
+            product_name='{{product_name}}',
+            version='{{version}}',
+            scenarios='{{scenarios}}',
+            setup_info='{{setup_info}}',
             language_specific_instructions=language_instructions,
             project_structure=project_structure,
             file_templates=file_templates,
@@ -736,11 +736,11 @@ FOCUS: Create a complete, runnable Go application that fully implements all scen
         test_execution = test_commands
         
         return base.format(
-            language='{language}',
-            product_name='{product_name}',
-            version='{version}',
-            scenarios='{scenarios}',
-            setup_info='{setup_info}',
+            language='{{language}}',
+            product_name='{{product_name}}',
+            version='{{version}}',
+            scenarios='{{scenarios}}',
+            setup_info='{{setup_info}}',
             language_specific_instructions=language_instructions,
             project_structure=project_structure,
             file_templates=file_templates,
@@ -851,11 +851,11 @@ FOCUS: Create a complete, runnable Rust application that fully implements all sc
         test_execution = test_commands
         
         return base.format(
-            language='{language}',
-            product_name='{product_name}',
-            version='{version}',
-            scenarios='{scenarios}',
-            setup_info='{setup_info}',
+            language='{{language}}',
+            product_name='{{product_name}}',
+            version='{{version}}',
+            scenarios='{{scenarios}}',
+            setup_info='{{setup_info}}',
             language_specific_instructions=language_instructions,
             project_structure=project_structure,
             file_templates=file_templates,
