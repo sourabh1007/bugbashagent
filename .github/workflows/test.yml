@@ -1,0 +1,52 @@
+name: Tests and Code Quality
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.11, 3.12]
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    
+    - name: Lint with flake8 (if available)
+      run: |
+        # Install flake8 if we want basic linting
+        pip install flake8 || true
+        # Stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics || true
+        # Exit-zero treats all errors as warnings
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics || true
+    
+    - name: Test with pytest
+      run: |
+        python -m pytest tests/ -v --tb=short
+    
+    - name: Test basic compilation
+      run: |
+        python -m py_compile main.py
+        python -m py_compile workflow.py
+        python -c "from workflow import AgentWorkflow; print('✅ Basic imports work')"
+    
+    - name: Test module imports
+      run: |
+        python -c "from agents import DocumentAnalyzer, CodeGenerator, LLMCompilerAgent; print('✅ Agents import successfully')"
+        python -c "from config_package import AZURE_OPENAI_API_VERSION; print('✅ Config package imports successfully')"

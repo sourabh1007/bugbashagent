@@ -1,9 +1,10 @@
 # LangChain Multi-Agent Code Development Project
 
-This project demonstrates a LangChain application with 2 agents that work together to develop code from requirements:
+This project demonstrates a LangChain application with 3 agents that work together to develop code from requirements:
 
 1. **Document Analyzer**: Analyzes project requirements and extracts key information
 2. **Code Generator**: Generates clean, functional code based on the analyzed requirements
+3. **LLM Compiler Agent**: Reviews and provides execution guidance for the generated code
 
 ## Setup
 
@@ -36,6 +37,7 @@ The workflow automatically saves all intermediate and final outputs in timestamp
   - `00_workflow_summary.txt` - Complete workflow summary
   - `step_01_document_analyzer.txt` - Document analysis output
   - `step_02_code_generator.txt` - Generated code output
+  - `step_03_llm_compiler_agent.txt` - Compilation analysis and recommendations
 
 Each file contains:
 - Agent name and step number
@@ -49,8 +51,12 @@ Each file contains:
 - `agents/`: Directory containing agent implementations
   - `document_analyzer.py`: Document Analyzer agent
   - `code_generator.py`: Code Generator agent  
+  - `llm_compiler_agent.py`: LLM Compiler Agent
   - `base_agent.py`: Base agent class
 - `workflow.py`: Agent workflow orchestration
-- `config.py`: Configuration settings
-- `test_workflow.py`: Test script for the workflow
+- `config_package/`: Configuration settings and package management
+- `tools/`: Code generation tools and utilities
+- `patterns/`: Language patterns and configurations
+- `factories/`: Factory classes for prompt strategies
+- `strategies/`: Strategy patterns for different languages
 - `requirements.txt`: Python dependencies
