@@ -2,7 +2,7 @@ from typing import List, Dict, Any
 import os
 import json
 from datetime import datetime
-from agents import CodeGenerator, DocumentAnalyzer
+from agents import CodeGenerator, DocumentAnalyzer, LLMCompilerAgent
 
 
 class AgentWorkflow:
@@ -18,7 +18,8 @@ class AgentWorkflow:
         """Initialize all agents in the workflow"""
         return [
             DocumentAnalyzer(self.llm),
-            CodeGenerator(self.llm)
+            CodeGenerator(self.llm),
+            LLMCompilerAgent(self.llm)
         ]
     
     def _create_output_folder(self) -> str:
@@ -61,6 +62,52 @@ class AgentWorkflow:
                 else:
                     # For string outputs (like from other agents)
                     f.write(str(output_data) + "\n")
+                
+                # For LLM Compiler Agent, also include detailed error analysis
+                if "compiler" in agent_name.lower() and isinstance(output_data, str):
+                    # Get the full agent result for additional details
+                    if hasattr(self, '_current_agent_result'):
+                        agent_result = self._current_agent_result
+                        if agent_result.get("error_analysis"):
+                            f.write("\n" + "=" * 60 + "\n")
+                            f.write("CONSOLIDATED COMPILATION ERROR ANALYSIS:\n")
+                            f.write("=" * 60 + "\n\n")
+                            
+                            error_analysis = agent_result["error_analysis"]
+                            
+                            # Write error summary
+                            if error_analysis.get("error_summary"):
+                                f.write("📊 ERROR OVERVIEW:\n")
+                                f.write(f"- Total Errors: {error_analysis.get('total_errors', '?')}\n")
+                                f.write(f"- Error Categories: {len(error_analysis.get('error_categories', {}))}\n")
+                                f.write(f"- Compilation Command: {error_analysis.get('compilation_command', '?')}\n\n")
+                                
+                                # Write error categories breakdown
+                                f.write("🔥 ERROR BREAKDOWN:\n")
+                                for category, count in error_analysis.get("error_categories", {}).items():
+                                    f.write(f"- {category.replace('_', ' ').title()}: {count} errors\n")
+                                f.write("\n")
+                            
+                            # Write step-by-step plan
+                            if error_analysis.get("step_by_step_plan"):
+                                f.write("🛠️ STEP-BY-STEP FIX PLAN:\n")
+                                for i, step in enumerate(error_analysis.get("step_by_step_plan", []), 1):
+                                    f.write(f"{i}. {step}\n")
+                                f.write("\n")
+                            
+                            # Write consolidated fixes
+                            if error_analysis.get("consolidated_fixes"):
+                                f.write("💡 CONSOLIDATED FIXES:\n")
+                                for fix in error_analysis.get("consolidated_fixes", []):
+                                    f.write(f"- {fix}\n")
+                                f.write("\n")
+                            
+                            # Write full LLM analysis if available
+                            if error_analysis.get("llm_full_analysis"):
+                                f.write("🧠 FULL LLM ANALYSIS:\n")
+                                f.write("-" * 40 + "\n")
+                                f.write(error_analysis["llm_full_analysis"] + "\n")
+                                f.write("-" * 40 + "\n\n")
             
             print(f"💾 Saved {agent_name} output to: {filename}")
             return filepath
@@ -97,6 +144,9 @@ class AgentWorkflow:
                 agent_result = agent.execute(current_input)
                 workflow_results["agent_outputs"].append(agent_result)
                 
+                # Store current agent result for detailed output saving
+                self._current_agent_result = agent_result
+                
                 # Save agent output to file
                 if agent_result["status"] == "success":
                     saved_file = self._save_agent_output(
@@ -132,8 +182,12 @@ class AgentWorkflow:
                     self._save_workflow_summary(workflow_results)
                     return workflow_results
                 
-                # Prepare input for next agent (use output from current agent)
-                current_input = agent_result["output"]
+                # Prepare input for next agent
+                # For most agents, pass the output string, but for LLMCompilerAgent, pass the full result dict
+                if i < len(self.agents) and hasattr(self.agents[i], 'name') and 'compiler' in self.agents[i].name.lower():
+                    current_input = agent_result  # Pass full result dict to compiler agent
+                else:
+                    current_input = agent_result["output"]  # Use output string for other agents
                 print(f"✅ {agent.name} completed successfully")
             
             # Set final results

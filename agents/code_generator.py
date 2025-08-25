@@ -331,6 +331,7 @@ class CodeGenerator(BaseAgent):
                 "language": language,
                 "product_name": product_name,
                 "simple_report": project_files.get("simple_report"),
+                "code_path": project_dir,
                 "status": "success",
                 "generation_mode": "scenario_by_scenario",
                 "total_scenarios_processed": len(scenario_results["successful"]) + len(scenario_results["failed"])
