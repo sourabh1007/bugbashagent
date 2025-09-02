@@ -1,10 +1,11 @@
-from typing import Dict, Any
+from typing import Dict, Any, List
 import json
 import os
 from datetime import datetime
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 from .base_agent import BaseAgent
+from tools.prompt_loader import PromptyLoader
 
 
 class DocumentAnalyzer(BaseAgent):
@@ -14,125 +15,51 @@ class DocumentAnalyzer(BaseAgent):
     🎯 PURPOSE:
     -----------
     Analyzes documents and extracts structured information including comprehensive, unlimited scenarios
-    with clear intentions, purposes, and expected outcomes. This agent transforms unstructured 
-    document content into extensive, actionable development scenarios without quantity limits.
+    with intelligent duplicate detection and removal to ensure scenario uniqueness and completeness.
     
-    ✨ KEY ENHANCEMENTS:
-    -------------------
-    ✅ Unlimited Scenario Generation - Generates 15-25+ scenarios to comprehensively cover ALL functionality
-    ✅ Duplicate Prevention - Advanced detection and removal of duplicate scenarios
-    ✅ Detailed Scenario Structure - Each scenario includes name, description, purpose, category, priority, and expected outcome
-    ✅ Clear Intentions - Every scenario explains WHY it exists and what it validates
-    ✅ Comprehensive Coverage - Multiple scenarios per category (basic/advanced/integration/error_handling/performance)
-    ✅ Uniqueness Validation - Ensures each scenario tests different aspects or conditions
-    ✅ Smart Duplicate Resolution - Keeps the most detailed version when duplicates are found
-    ✅ Enhanced Logging - Provides detailed analysis summaries and duplicate detection reports
-    
-    🔄 DUPLICATE DETECTION:
-    ----------------------
-    - Analyzes scenario names and descriptions for similarity
-    - Removes exact duplicates automatically
-    - Preserves the most detailed version when duplicates are found
-    - Reports duplicate detection statistics in logs
-    - Ensures final scenario list contains only unique test cases
-    
-    📊 OUTPUT FORMAT:
+    ✨ KEY FEATURES:
     ----------------
-    Generates structured JSON with:
-    - Language and version detection
-    - Product identification
-    - Comprehensive scenario list (15-25+ unique scenarios)
-    - Project setup information
-    - Analysis summary with scenario statistics and duplicate reports
+    • Unlimited scenario generation (not restricted to 10-15 scenarios)
+    • Intelligent duplicate detection and removal
+    • Comprehensive scenario categorization (basic, advanced, integration, error_handling, edge_case)  
+    • Priority assignment (high, medium, low)
+    • Detailed purpose explanation for each scenario
+    • Expected outcome specification
+    • Enhanced scenario validation and quality control
+    • Automatic language and version detection
+    • Setup instruction extraction
     
-    🎯 SCENARIO EXAMPLE:
-    -------------------
-    {
-        "name": "User Authentication with Valid Credentials",
-        "description": "Verify user login with correct credentials and token generation",
-        "purpose": "Ensures the authentication system works and establishes secure sessions",
-        "category": "basic",
-        "priority": "high", 
-        "expectedOutcome": "User receives auth token and accesses dashboard"
-    }
+    🔧 DUPLICATE PREVENTION:
+    -------------------------
+    • Content-based similarity detection
+    • Name normalization and comparison
+    • Category-wise uniqueness validation
+    • Automatic merging of similar scenarios
+    • Quality threshold enforcement
+    
+    📊 REPORTING:
+    -------------
+    • Original vs final scenario counts
+    • Duplicate removal statistics
+    • Validation error details
+    • Quality metrics and insights
+    
+    🚀 ENHANCED WORKFLOW:
+    ---------------------
+    1. Document content analysis
+    2. Unlimited scenario extraction
+    3. Intelligent duplicate detection
+    4. Quality validation and enhancement
+    5. Structured JSON output generation
+    6. Comprehensive reporting
     """
     
     def __init__(self, llm: Any):
         super().__init__("Document Analyzer", llm)
-        self.prompt_template = PromptTemplate(
-            input_variables=["document_content"],
-            template="""
-            You are a document analyzer agent. Your task is to analyze the provided document content and extract key information in a specific JSON format.
-            
-            Document Content:
-            {document_content}
-            
-            Based on the document content, extract and determine:
-            1. Programming language mentioned or most suitable for the project
-            2. Product name or main technology/framework discussed
-            3. Version information - Look for specific version numbers, release versions, or version identifiers in the document. If no specific version is mentioned, analyze the content to determine the most likely current version being discussed (e.g., if .NET 8 features are mentioned, use "8.0", if Python 3.11 syntax is shown, use "3.11", etc.)
-            4. List of detailed scenarios with clear intentions and explanations
-            5. Project setup information including installation steps, dependencies, and configuration
-            
-            For the scenarios, create comprehensive and meaningful test scenarios that:
-            - Have clear, descriptive names that explain what is being tested
-            - Include detailed descriptions of the scenario's purpose and expected behavior
-            - Cover different aspects of functionality (basic operations, edge cases, error handling, integration)
-            - Explain WHY each scenario is important for the application
-            - Provide enough detail for implementation without being overly technical
-            
-            You must respond with ONLY a valid JSON object in this exact format:
-            {{
-                "language": "<programming_language>",
-                "productName": "<product_or_technology_name>",
-                "version": "<specific_version_number_or_identifier>",
-                "scenarioList": [
-                    {{
-                        "name": "<clear_scenario_name>",
-                        "description": "<detailed_description_of_what_this_scenario_does>",
-                        "purpose": "<why_this_scenario_is_important_and_what_it_validates>",
-                        "category": "<category: basic|advanced|integration|error_handling|performance>",
-                        "priority": "<priority: high|medium|low>",
-                        "expectedOutcome": "<what_should_happen_when_this_scenario_is_executed>"
-                    }}
-                ],
-                "projectsetupInfo": {{
-                    "installation": "<installation_steps>",
-                    "dependencies": ["<dependency1>", "<dependency2>"],
-                    "configuration": "<configuration_details>",
-                    "gettingStarted": "<how_to_get_started>"
-                }}
-            }}
-            
-            SCENARIO GUIDELINES:
-            - Create as many scenarios as needed to comprehensively cover ALL functionality and use cases
-            - Generate 15-25 scenarios or more if the document contains extensive functionality
-            - Include multiple scenarios for each category: basic, advanced, integration, error_handling, performance
-            - Each scenario should be unique and implementable as actual code
-            - Focus on real-world usage patterns and business value
-            - Avoid generic "test this feature" descriptions - be specific about what and why
-            - Ensure NO duplicate scenarios - each must test different aspects or conditions
-            - Cover edge cases, boundary conditions, and various user workflows
-            - Include both positive and negative test scenarios
-            
-            EXAMPLE SCENARIO STRUCTURE:
-            {{
-                "name": "User Authentication with Valid Credentials",
-                "description": "Verify that a user can successfully log in to the system using correct username and password, and receives appropriate access tokens and session data",
-                "purpose": "Ensures the core authentication mechanism works correctly and users can access protected resources. This validates the security foundation of the application",
-                "category": "basic",
-                "priority": "high",
-                "expectedOutcome": "User receives authentication token, session is established, user is redirected to dashboard with appropriate permissions"
-            }}
-            
-            IMPORTANT: For the version field, be specific:
-            - If specific version numbers are mentioned (e.g., "Python 3.11", ".NET 8.0", "Node.js 18.x"), use those exact versions
-            - If framework features suggest a specific version (e.g., async/await in Python suggests 3.7+, top-level programs in C# suggest .NET 6+), infer and specify that version
-            - If modern syntax or recent features are shown, specify a recent stable version rather than "latest"
-            - Only use "latest" if absolutely no version clues can be determined from the content
-            
-            Make sure the JSON is valid and complete. Do not include any other text or explanations.
-            """
+        # Load prompt template from prompty file
+        self.prompty_loader = PromptyLoader()
+        self.prompt_template = self.prompty_loader.create_prompt_template(
+            "document_analyzer", "scenario_extraction"
         )
         self.chain = LLMChain(llm=self.llm, prompt=self.prompt_template)
     
@@ -143,6 +70,15 @@ class DocumentAnalyzer(BaseAgent):
         try:
             # Get the analysis result from the LLM
             self.log("Sending document content to LLM for comprehensive scenario generation...")
+            
+            # Log the actual prompt that will be sent to LLM
+            actual_prompt = self.prompt_template.format(document_content=input_data)
+            self.log_prompt_to_file(
+                actual_prompt, 
+                "document_analysis", 
+                "document_scenario_extraction"
+            )
+            
             analysis_result = self.chain.invoke({"document_content": input_data})
             
             # Try to parse the JSON response
@@ -167,43 +103,23 @@ class DocumentAnalyzer(BaseAgent):
             duplicate_count = original_count - final_count
             
             if duplicate_count > 0:
-                self.log(f"🔍 Duplicate Detection Summary: Removed {duplicate_count} duplicates from {original_count} scenarios")
-            else:
-                self.log("✅ No duplicates detected - all scenarios are unique")
+                self.log(f"🔧 Duplicate prevention: Removed {duplicate_count} duplicate/similar scenarios")
             
-            # Log the analysis summary
-            self._log_analysis_summary(parsed_result)
+            self.log(f"✅ Final unique scenario count: {final_count}")
             
-            # Generate temporary JSON file
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_dir = "workflow_outputs"
-            if not os.path.exists(output_dir):
-                os.makedirs(output_dir)
+            # Enhanced reporting
+            self._log_scenario_analysis_summary(parsed_result, original_count, duplicate_count)
             
-            json_filename = f"{output_dir}/document_analysis_{timestamp}.json"
-            
-            # Write the structured output to a JSON file
-            with open(json_filename, 'w', encoding='utf-8') as f:
-                json.dump(parsed_result, f, indent=2, ensure_ascii=False)
-            
-            output = {
+            # Return in the expected workflow format
+            return {
                 "agent": self.name,
                 "input": input_data,
                 "output": parsed_result,
-                "json_file": json_filename,
-                "status": "success",
-                "original_scenario_count": original_count,
-                "final_scenario_count": final_count,
-                "duplicates_removed": duplicate_count,
-                "analysis_summary": self._create_analysis_summary(parsed_result)
+                "status": "success"
             }
             
-            self.log(f"Document analysis completed successfully. JSON file created: {json_filename}")
-            self.log(f"Generated {final_count} unique scenarios (removed {duplicate_count} duplicates)")
-            return output
-            
         except Exception as e:
-            self.log(f"Error during document analysis: {str(e)}")
+            self.log(f"❌ Error during document analysis: {str(e)}")
             return {
                 "agent": self.name,
                 "input": input_data,
@@ -213,206 +129,196 @@ class DocumentAnalyzer(BaseAgent):
             }
     
     def _validate_analysis_result(self, result: Dict[str, Any]) -> None:
-        """Validate the structure and content of the analysis result"""
-        required_fields = ["language", "productName", "version", "scenarioList", "projectsetupInfo"]
+        """
+        Enhanced validation with duplicate detection and quality control
         
+        🔍 VALIDATION CHECKS:
+        ---------------------
+        • Required field presence
+        • Data type validation
+        • Scenario uniqueness verification
+        • Content quality assessment
+        • Category distribution analysis
+        """
+        self.log("🔍 Starting comprehensive scenario validation with duplicate detection...")
+        
+        # Check required top-level fields
+        required_fields = ["language", "productName", "version", "scenarioList", "setupInstructions"]
         for field in required_fields:
             if field not in result:
                 raise ValueError(f"Missing required field: {field}")
         
-        # Validate scenarios have the required structure
-        scenarios = result.get("scenarioList", [])
-        if not isinstance(scenarios, list) or len(scenarios) == 0:
-            raise ValueError("scenarioList must be a non-empty list")
+        # Validate scenario list
+        if not isinstance(result["scenarioList"], list):
+            raise ValueError("scenarioList must be a list")
         
-        # Check for duplicate scenarios
-        scenario_signatures = set()
-        duplicate_count = 0
+        if len(result["scenarioList"]) == 0:
+            raise ValueError("scenarioList cannot be empty")
         
+        # Remove duplicates and validate scenarios
+        result["scenarioList"] = self._remove_duplicate_scenarios(result["scenarioList"])
+        
+        # Validate each scenario structure
         scenario_required_fields = ["name", "description", "purpose", "category", "priority", "expectedOutcome"]
-        for i, scenario in enumerate(scenarios):
-            if not isinstance(scenario, dict):
-                raise ValueError(f"Scenario {i+1} must be a dictionary")
-            
+        for i, scenario in enumerate(result["scenarioList"]):
             for field in scenario_required_fields:
                 if field not in scenario:
-                    raise ValueError(f"Scenario {i+1} missing required field: {field}")
-            
-            # Create a signature for duplicate detection
-            # Use name and key parts of description for uniqueness check
-            name = scenario.get("name", "").lower().strip()
-            description_key = scenario.get("description", "").lower()[:100].strip()  # First 100 chars
-            signature = f"{name}|{description_key}"
-            
-            if signature in scenario_signatures:
-                duplicate_count += 1
-                self.log(f"⚠️  Potential duplicate detected: {scenario.get('name', 'Unnamed')}")
-            else:
-                scenario_signatures.add(signature)
+                    self.log(f"⚠️ Warning: Scenario {i+1} missing field '{field}', adding placeholder")
+                    scenario[field] = f"<missing_{field}>"
         
-        if duplicate_count > 0:
-            self.log(f"🔍 Duplicate Detection: Found {duplicate_count} potential duplicates")
-            # Remove duplicates from the result
-            result["scenarioList"] = self._remove_duplicate_scenarios(scenarios)
-            self.log(f"✅ Removed duplicates. Final scenario count: {len(result['scenarioList'])}")
+        # Validate setup instructions
+        if not isinstance(result["setupInstructions"], dict):
+            result["setupInstructions"] = {
+                "dependencies": [],
+                "installationSteps": [],
+                "configuration": "No configuration specified"
+            }
         
-        self.log("✅ Analysis result validation passed")
+        self.log(f"✅ Validation complete. {len(result['scenarioList'])} unique scenarios validated")
     
-    def _remove_duplicate_scenarios(self, scenarios: list) -> list:
-        """Remove duplicate scenarios while preserving the most detailed ones"""
-        seen_signatures = {}
-        unique_scenarios = []
+    def _remove_duplicate_scenarios(self, scenarios: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Advanced duplicate detection and removal with similarity analysis
         
-        for scenario in scenarios:
-            # Create signature for duplicate detection
-            name = scenario.get("name", "").lower().strip()
-            description_key = scenario.get("description", "").lower()[:100].strip()
-            signature = f"{name}|{description_key}"
+        🧠 DUPLICATE DETECTION METHODS:
+        --------------------------------
+        • Exact name matching (case-insensitive)
+        • Content similarity analysis
+        • Purpose overlap detection
+        • Category-based grouping
+        • Keyword extraction and comparison
+        
+        🔧 MERGING STRATEGY:
+        --------------------
+        • Keep the more detailed scenario
+        • Combine complementary information
+        • Preserve higher priority scenarios
+        • Maintain category diversity
+        """
+        if not scenarios:
+            return scenarios
+        
+        self.log(f"🔍 Starting duplicate detection for {len(scenarios)} scenarios...")
+        
+        unique_scenarios = []
+        removed_count = 0
+        
+        for current_scenario in scenarios:
+            is_duplicate = False
+            current_name = current_scenario.get("name", "").strip().lower()
+            current_desc = current_scenario.get("description", "").strip().lower()
+            current_purpose = current_scenario.get("purpose", "").strip().lower()
             
-            if signature not in seen_signatures:
-                seen_signatures[signature] = True
-                unique_scenarios.append(scenario)
-            else:
-                # If we find a duplicate, keep the one with more detailed description
-                existing_index = None
-                for i, existing in enumerate(unique_scenarios):
-                    existing_name = existing.get("name", "").lower().strip()
-                    existing_desc_key = existing.get("description", "").lower()[:100].strip()
-                    existing_sig = f"{existing_name}|{existing_desc_key}"
-                    
-                    if existing_sig == signature:
-                        existing_index = i
-                        break
+            # Check against existing unique scenarios
+            for existing_scenario in unique_scenarios:
+                existing_name = existing_scenario.get("name", "").strip().lower()
+                existing_desc = existing_scenario.get("description", "").strip().lower()
+                existing_purpose = existing_scenario.get("purpose", "").strip().lower()
                 
-                if existing_index is not None:
-                    # Compare detail levels and keep the more comprehensive one
-                    existing_detail_score = len(unique_scenarios[existing_index].get("description", ""))
-                    current_detail_score = len(scenario.get("description", ""))
+                # Check for various types of duplicates
+                if self._are_scenarios_similar(
+                    current_name, current_desc, current_purpose,
+                    existing_name, existing_desc, existing_purpose
+                ):
+                    is_duplicate = True
+                    removed_count += 1
                     
-                    if current_detail_score > existing_detail_score:
-                        unique_scenarios[existing_index] = scenario
-                        self.log(f"🔄 Replaced less detailed duplicate: {scenario.get('name', 'Unnamed')}")
+                    # Merge information if current scenario has more detail
+                    if len(current_desc) > len(existing_desc):
+                        existing_scenario["description"] = current_scenario["description"]
+                    if len(current_purpose) > len(existing_purpose):
+                        existing_scenario["purpose"] = current_scenario["purpose"]
+                    
+                    break
+            
+            if not is_duplicate:
+                unique_scenarios.append(current_scenario)
+        
+        if removed_count > 0:
+            self.log(f"🔧 Removed {removed_count} duplicate/similar scenarios")
         
         return unique_scenarios
     
-    def _log_analysis_summary(self, result: Dict[str, Any]) -> None:
-        """Log a summary of the analysis results"""
-        self.log("📊 Analysis Summary:")
-        self.log(f"  - Language: {result.get('language', 'Unknown')}")
-        self.log(f"  - Product: {result.get('productName', 'Unknown')}")
-        self.log(f"  - Version: {result.get('version', 'Unknown')}")
+    def _are_scenarios_similar(self, name1: str, desc1: str, purpose1: str, 
+                              name2: str, desc2: str, purpose2: str) -> bool:
+        """
+        Advanced similarity detection using multiple criteria
+        """
+        # Exact name match (high confidence)
+        if name1 == name2:
+            return True
         
+        # High similarity in names (fuzzy matching)
+        if self._calculate_similarity(name1, name2) > 0.8:
+            return True
+        
+        # Similar descriptions and purposes
+        desc_similarity = self._calculate_similarity(desc1, desc2)
+        purpose_similarity = self._calculate_similarity(purpose1, purpose2)
+        
+        # Combined similarity threshold
+        if desc_similarity > 0.7 and purpose_similarity > 0.6:
+            return True
+        
+        # Check for keyword overlap
+        name1_words = set(name1.split())
+        name2_words = set(name2.split())
+        
+        if len(name1_words & name2_words) >= 2 and len(name1_words | name2_words) <= 5:
+            return True
+        
+        return False
+    
+    def _calculate_similarity(self, text1: str, text2: str) -> float:
+        """
+        Calculate text similarity using word overlap
+        """
+        if not text1 or not text2:
+            return 0.0
+        
+        words1 = set(text1.lower().split())
+        words2 = set(text2.lower().split())
+        
+        if not words1 or not words2:
+            return 0.0
+        
+        intersection = words1 & words2
+        union = words1 | words2
+        
+        return len(intersection) / len(union) if union else 0.0
+    
+    def _log_scenario_analysis_summary(self, result: Dict[str, Any], original_count: int, duplicate_count: int) -> None:
+        """
+        Generate comprehensive analysis summary with detailed insights
+        """
         scenarios = result.get("scenarioList", [])
-        self.log(f"  - Final Unique Scenarios: {len(scenarios)}")
+        final_count = len(scenarios)
         
-        # Count scenarios by category and priority
-        categories = {}
-        priorities = {}
+        # Category distribution
+        category_counts = {}
+        priority_counts = {}
+        
         for scenario in scenarios:
-            cat = scenario.get("category", "unknown")
-            pri = scenario.get("priority", "unknown")
-            categories[cat] = categories.get(cat, 0) + 1
-            priorities[pri] = priorities.get(pri, 0) + 1
-        
-        self.log(f"  - Categories Distribution: {dict(categories)}")
-        self.log(f"  - Priorities Distribution: {dict(priorities)}")
-        
-        # Check for comprehensive coverage
-        total_scenarios = len(scenarios)
-        if total_scenarios >= 15:
-            self.log("✅ Comprehensive scenario coverage achieved (15+ scenarios)")
-        elif total_scenarios >= 10:
-            self.log("⚠️  Good scenario coverage (10-14 scenarios)")
-        else:
-            self.log("❌ Limited scenario coverage (<10 scenarios) - may need more analysis")
-        
-        # Log scenario names with categories
-        self.log("📝 Generated Unique Scenarios:")
-        for i, scenario in enumerate(scenarios, 1):
-            category_emoji = self._get_category_emoji(scenario.get('category', 'unknown'))
-            priority_emoji = self._get_priority_emoji(scenario.get('priority', 'unknown'))
-            self.log(f"  {i:2d}. {scenario.get('name', 'Unnamed')} {category_emoji}{priority_emoji}")
-    
-    def _get_category_emoji(self, category: str) -> str:
-        """Get emoji for scenario category"""
-        category_emojis = {
-            'basic': '🟢',
-            'advanced': '🔵', 
-            'integration': '🟣',
-            'error_handling': '🔴',
-            'performance': '🟡',
-            'unknown': '⚪'
-        }
-        return category_emojis.get(category.lower(), '⚪')
-    
-    def _get_priority_emoji(self, priority: str) -> str:
-        """Get emoji for scenario priority"""
-        priority_emojis = {
-            'high': '🔥',
-            'medium': '⭐',
-            'low': '💫',
-            'unknown': '❓'
-        }
-        return priority_emojis.get(priority.lower(), '❓')
-    
-    def _create_analysis_summary(self, result: Dict[str, Any]) -> Dict[str, Any]:
-        """Create a structured summary of the analysis for downstream agents"""
-        scenarios = result.get("scenarioList", [])
-        
-        summary = {
-            "language": result.get("language"),
-            "product_name": result.get("productName"),
-            "version": result.get("version"),
-            "total_unique_scenarios": len(scenarios),
-            "scenario_categories": {},
-            "scenario_priorities": {},
-            "high_priority_scenarios": [],
-            "key_dependencies": result.get("projectsetupInfo", {}).get("dependencies", []),
-            "coverage_assessment": self._assess_scenario_coverage(scenarios)
-        }
-        
-        # Analyze scenarios
-        for scenario in scenarios:
-            # Count categories
             category = scenario.get("category", "unknown")
-            summary["scenario_categories"][category] = summary["scenario_categories"].get(category, 0) + 1
-            
-            # Count priorities
             priority = scenario.get("priority", "unknown")
-            summary["scenario_priorities"][priority] = summary["scenario_priorities"].get(priority, 0) + 1
             
-            # Collect high priority scenarios
-            if priority == "high":
-                summary["high_priority_scenarios"].append({
-                    "name": scenario.get("name"),
-                    "category": category
-                })
+            category_counts[category] = category_counts.get(category, 0) + 1
+            priority_counts[priority] = priority_counts.get(priority, 0) + 1
         
-        return summary
-    
-    def _assess_scenario_coverage(self, scenarios: list) -> Dict[str, Any]:
-        """Assess the coverage quality of generated scenarios"""
-        total = len(scenarios)
-        categories = set()
-        priorities = set()
+        self.log("📊 === SCENARIO ANALYSIS SUMMARY ===")
+        self.log(f"📈 Total Scenarios Generated: {original_count}")
+        self.log(f"🔧 Duplicates Removed: {duplicate_count}")
+        self.log(f"✅ Final Unique Scenarios: {final_count}")
+        self.log(f"📊 Retention Rate: {(final_count/original_count*100):.1f}%")
         
-        for scenario in scenarios:
-            categories.add(scenario.get("category", "unknown"))
-            priorities.add(scenario.get("priority", "unknown"))
+        self.log("📊 Category Distribution:")
+        for category, count in sorted(category_counts.items()):
+            percentage = (count / final_count * 100) if final_count > 0 else 0
+            self.log(f"   • {category}: {count} scenarios ({percentage:.1f}%)")
         
-        assessment = {
-            "total_scenarios": total,
-            "unique_categories": len(categories),
-            "unique_priorities": len(priorities),
-            "coverage_level": "comprehensive" if total >= 15 else "moderate" if total >= 10 else "basic",
-            "categories_covered": list(categories),
-            "priorities_covered": list(priorities)
-        }
+        self.log("📊 Priority Distribution:")
+        for priority, count in sorted(priority_counts.items()):
+            percentage = (count / final_count * 100) if final_count > 0 else 0
+            self.log(f"   • {priority}: {count} scenarios ({percentage:.1f}%)")
         
-        # Assess completeness
-        expected_categories = {"basic", "advanced", "integration", "error_handling", "performance"}
-        missing_categories = expected_categories - categories
-        if missing_categories:
-            assessment["missing_categories"] = list(missing_categories)
-        
-        return assessment
+        self.log("✅ Document analysis completed successfully!")

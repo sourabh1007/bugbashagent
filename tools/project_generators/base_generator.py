@@ -6,7 +6,7 @@ Contains the base class for all language-specific project generators.
 
 import os
 from typing import Dict, List, Any
-from ..file_creator import FileCreator
+from ..file_management.file_creator import FileCreator
 from config_package.package_versions import PackageVersions
 
 

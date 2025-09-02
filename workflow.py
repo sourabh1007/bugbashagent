@@ -2,7 +2,7 @@ from typing import List, Dict, Any
 import os
 import json
 from datetime import datetime
-from agents import CodeGenerator, DocumentAnalyzer, LLMCompilerAgent
+from agents import CodeGenerator, DocumentAnalyzer
 
 
 class AgentWorkflow:
@@ -18,8 +18,7 @@ class AgentWorkflow:
         """Initialize all agents in the workflow"""
         return [
             DocumentAnalyzer(self.llm),
-            CodeGenerator(self.llm),
-            LLMCompilerAgent(self.llm)
+            CodeGenerator(self.llm)
         ]
     
     def _create_output_folder(self) -> str:
@@ -33,6 +32,138 @@ class AgentWorkflow:
         
         return output_path
     
+    def _write_code_generator_output_with_compilation_details(self, agent_name: str, step_number: int, input_data: str, output_data: Any, status: str) -> str:
+        """Enhanced version that includes detailed compilation attempt analysis"""
+        # Clean agent name for filename
+        clean_name = agent_name.lower().replace(" ", "_")
+        filename = f"step_{step_number:02d}_{clean_name}.txt"
+        filepath = os.path.join(self.output_folder, filename)
+        
+        try:
+            with open(filepath, 'w', encoding='utf-8') as f:
+                f.write(f"AGENT: {agent_name}\n")
+                f.write(f"STEP: {step_number}\n")
+                f.write(f"STATUS: {status}\n")
+                f.write(f"TIMESTAMP: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write("=" * 80 + "\n\n")
+                
+                # Enhanced section: Compilation attempts analysis
+                compilation_attempts = output_data.get("compilation_attempts", [])
+                if compilation_attempts:
+                    f.write("🔄 COMPILATION ATTEMPTS ANALYSIS\n")
+                    f.write("=" * 50 + "\n\n")
+                    
+                    f.write(f"📊 EXECUTIVE SUMMARY:\n")
+                    f.write(f"- Total Attempts: {len(compilation_attempts)}\n")
+                    
+                    # Calculate attempt statistics
+                    successful_attempts = sum(1 for attempt in compilation_attempts if attempt.get('status') == 'success')
+                    failed_attempts = len(compilation_attempts) - successful_attempts
+                    
+                    f.write(f"- Successful: {successful_attempts}\n")
+                    f.write(f"- Failed: {failed_attempts}\n")
+                    
+                    if successful_attempts > 0:
+                        success_rate = (successful_attempts / len(compilation_attempts)) * 100
+                        f.write(f"- Success Rate: {success_rate:.1f}%\n")
+                    
+                    # Show selective scenario regeneration info if available
+                    if output_data.get("selective_regeneration_used"):
+                        regenerated_scenarios = output_data.get("regenerated_scenarios", [])
+                        preserved_scenarios = output_data.get("preserved_scenarios", [])
+                        f.write(f"- Selective Regeneration: ✅ USED\n")
+                        f.write(f"- Scenarios Regenerated: {len(regenerated_scenarios)}\n")
+                        f.write(f"- Scenarios Preserved: {len(preserved_scenarios)}\n")
+                    else:
+                        f.write(f"- Selective Regeneration: ❌ NOT USED\n")
+                    
+                    f.write("\n" + "=" * 50 + "\n\n")
+                    
+                    # Detailed attempt-by-attempt analysis
+                    f.write("📋 DETAILED ATTEMPT ANALYSIS:\n")
+                    f.write("-" * 40 + "\n")
+                    
+                    for i, attempt in enumerate(compilation_attempts, 1):
+                        f.write(f"\n🔹 ATTEMPT #{i}:\n")
+                        f.write(f"   Status: {attempt.get('status', 'unknown').upper()}\n")
+                        f.write(f"   Timestamp: {attempt.get('timestamp', 'N/A')}\n")
+                        
+                        if attempt.get('status') == 'success':
+                            f.write(f"   ✅ COMPILATION SUCCESSFUL\n")
+                            if attempt.get('output'):
+                                f.write(f"   Build Output: {attempt['output'][:200]}...\n")
+                        else:
+                            f.write(f"   ❌ COMPILATION FAILED\n")
+                            
+                            # Show error counts by category
+                            error_analysis = attempt.get('error_analysis', {})
+                            if error_analysis.get('error_categories'):
+                                f.write(f"   Error Categories:\n")
+                                for category, count in error_analysis['error_categories'].items():
+                                    f.write(f"     - {category.replace('_', ' ').title()}: {count}\n")
+                            
+                            # Show top errors
+                            parsed_errors = attempt.get('parsed_errors', [])
+                            if parsed_errors:
+                                f.write(f"   Top Errors:\n")
+                                for error in parsed_errors[:3]:  # Show top 3
+                                    f.write(f"     - {error.get('message', 'Unknown error')[:80]}...\n")
+                            
+                            # Show regenerated scenarios for this attempt
+                            if attempt.get('regenerated_scenarios'):
+                                f.write(f"   Regenerated Scenarios: {len(attempt['regenerated_scenarios'])}\n")
+                                for scenario in attempt['regenerated_scenarios'][:3]:  # Show first 3
+                                    f.write(f"     - {scenario}\n")
+                        
+                        f.write("\n")
+                
+                # Show final recommendations if available
+                if output_data.get("final_recommendations"):
+                    f.write("💡 FINAL RECOMMENDATIONS:\n")
+                    f.write("-" * 30 + "\n")
+                    for rec in output_data["final_recommendations"]:
+                        f.write(f"   {rec}\n")
+                else:
+                    f.write("💡 NEXT STEPS RECOMMENDED:\n")
+                    f.write("-" * 30 + "\n")
+                    f.write("   1. Review the detailed error analysis in the comprehensive report\n")
+                    f.write("   2. Check the pattern suggestions for common fix approaches\n")
+                    f.write("   3. Consider running additional generation attempts\n")
+                    f.write("   4. Review and manually fix remaining compilation errors\n")
+        
+                f.write(f"\n📊 For complete analysis, see: COMPREHENSIVE_CODE_GENERATION_REPORT.md\n")
+                f.write(f"📂 All files saved to: {output_data.get('code_path', 'project directory')}\n")
+        
+                # Write final error message
+                if status == "compilation_failed":
+                    error_message = output_data.get("error", "Code generation completed but compilation failed")
+                    f.write(f"\n❌ FINAL RESULT: {error_message}\n")
+                elif status == "success":
+                    successful_attempt = output_data.get("successful_attempt", len(compilation_attempts))
+                    f.write(f"\n✅ FINAL RESULT: Code generation successful on attempt #{successful_attempt}\n")
+                
+                f.write("\nINPUT:\n")
+                f.write("-" * 40 + "\n")
+                f.write(str(input_data) + "\n\n")
+                
+                f.write("OUTPUT:\n")
+                f.write("-" * 40 + "\n")
+                
+                # Handle different output types
+                if isinstance(output_data, dict):
+                    # For dictionary outputs (like from Code Generator), format as JSON
+                    f.write(json.dumps(output_data, indent=2, ensure_ascii=False) + "\n")
+                else:
+                    # For string outputs (like from other agents)
+                    f.write(str(output_data) + "\n")
+            
+            print(f"💾 Saved {agent_name} output to: {filename}")
+            return filepath
+            
+        except Exception as e:
+            print(f"❌ Error saving {agent_name} output: {str(e)}")
+            return None
+
     def _save_agent_output(self, agent_name: str, step_number: int, input_data: str, output_data: Any, status: str) -> str:
         """Save individual agent output to a file"""
         # Clean agent name for filename
@@ -126,6 +257,11 @@ class AgentWorkflow:
         self.output_folder = self._create_output_folder()
         print(f"📁 Output folder created: {self.output_folder}")
         
+        # Set up prompt logging for all agents
+        for agent in self.agents:
+            agent.set_prompt_log_folder(self.output_folder)
+        print(f"📝 Prompt logging enabled for all agents")
+        
         current_input = initial_input
         workflow_results = {
             "initial_input": initial_input,
@@ -147,27 +283,46 @@ class AgentWorkflow:
                 # Store current agent result for detailed output saving
                 self._current_agent_result = agent_result
                 
-                # Save agent output to file
+                # Save agent output to file with enhanced reporting for Code Generator
                 if agent_result["status"] == "success":
-                    saved_file = self._save_agent_output(
-                        agent.name, 
-                        i, 
-                        current_input, 
-                        agent_result["output"], 
-                        agent_result["status"]
-                    )
+                    # Use enhanced reporting for Code Generator
+                    if "code generator" in agent.name.lower():
+                        saved_file = self._write_code_generator_output_with_compilation_details(
+                            agent.name, 
+                            i, 
+                            current_input, 
+                            agent_result["output"], 
+                            agent_result["status"]
+                        )
+                    else:
+                        saved_file = self._save_agent_output(
+                            agent.name, 
+                            i, 
+                            current_input, 
+                            agent_result["output"], 
+                            agent_result["status"]
+                        )
                     if saved_file:
                         workflow_results["saved_files"].append(saved_file)
                 else:
-                    # Save error output as well
-                    error_output = f"ERROR: {agent_result.get('error', 'Unknown error')}"
-                    saved_file = self._save_agent_output(
-                        agent.name, 
-                        i, 
-                        current_input, 
-                        error_output, 
-                        agent_result["status"]
-                    )
+                    # Save error output as well with enhanced reporting for Code Generator
+                    if "code generator" in agent.name.lower():
+                        saved_file = self._write_code_generator_output_with_compilation_details(
+                            agent.name, 
+                            i, 
+                            current_input, 
+                            agent_result.get("output", {}), 
+                            agent_result["status"]
+                        )
+                    else:
+                        error_output = f"ERROR: {agent_result.get('error', 'Unknown error')}"
+                        saved_file = self._save_agent_output(
+                            agent.name, 
+                            i, 
+                            current_input, 
+                            error_output, 
+                            agent_result["status"]
+                        )
                     if saved_file:
                         workflow_results["saved_files"].append(saved_file)
                 
@@ -183,11 +338,7 @@ class AgentWorkflow:
                     return workflow_results
                 
                 # Prepare input for next agent
-                # For most agents, pass the output string, but for LLMCompilerAgent, pass the full result dict
-                if i < len(self.agents) and hasattr(self.agents[i], 'name') and 'compiler' in self.agents[i].name.lower():
-                    current_input = agent_result  # Pass full result dict to compiler agent
-                else:
-                    current_input = agent_result["output"]  # Use output string for other agents
+                current_input = agent_result["output"]  # Use output string for next agent
                 print(f"✅ {agent.name} completed successfully")
             
             # Set final results
@@ -246,6 +397,20 @@ class AgentWorkflow:
                     f.write(f"- {filename}\n")
                 
                 f.write(f"\nOUTPUT FOLDER: {self.output_folder}\n")
+                
+                # Add prompt summary
+                f.write(f"\n📝 PROMPT LOGGING:\n")
+                f.write("-" * 20 + "\n")
+                prompts_folder = os.path.join(self.output_folder, "prompts")
+                if os.path.exists(prompts_folder):
+                    prompt_files = [f for f in os.listdir(prompts_folder) if f.endswith('.txt')]
+                    f.write(f"Total prompts logged: {len(prompt_files)}\n")
+                    f.write(f"Prompts saved in: prompts/\n")
+                    f.write("Prompt files:\n")
+                    for prompt_file in sorted(prompt_files):
+                        f.write(f"  - {prompt_file}\n")
+                else:
+                    f.write("No prompts were logged during this workflow.\n")
             
             print(f"💾 Workflow summary saved to: 00_workflow_summary.txt")
             return summary_file

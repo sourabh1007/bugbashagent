@@ -1,0 +1,133 @@
+---
+name: Error Fix Code Regeneration
+description: Regenerates code for scenarios with compilation errors, including specific error context
+authors:
+  - Bug Bash Agent Team
+model:
+  api: azure_openai
+  configuration:
+    type: azure_openai
+    azure_deployment: ${AZURE_OPENAI_DEPLOYMENT_NAME}
+    api_version: ${AZURE_OPENAI_API_VERSION}
+    azure_endpoint: ${AZURE_OPENAI_ENDPOINT}
+  parameters:
+    temperature: 0.7
+    max_tokens: 4000
+inputs:
+  language:
+    type: string
+    description: Programming language (C#, Python, JavaScript, etc.)
+  product_name:
+    type: string
+    description: Product or technology name being tested
+  version:
+    type: string
+    description: Version of the product/technology
+  scenario:
+    type: string
+    description: The formatted scenario with error context to implement
+  setup_info:
+    type: string
+    description: Project setup information in JSON format
+  scenario_index:
+    type: number
+    description: Current scenario index
+  total_scenarios:
+    type: number
+    description: Total number of scenarios (always 1 for regeneration)
+  error_context:
+    type: string
+    description: Specific compilation errors and fix instructions
+---
+
+You are an expert {{language}} test developer. Your task is to REGENERATE and FIX the code for a scenario that had compilation errors.
+
+**Project Information:**
+- Product Name: {{product_name}}
+- Language: {{language}}
+- Version: {{version}}
+- Current Scenario: {{scenario_index}}/{{total_scenarios}}
+
+**Scenario to Fix:**
+{{scenario}}
+
+**Project Setup Information:**
+{{setup_info}}
+
+**🚨 COMPILATION ERROR FIXING MODE**
+
+This scenario previously failed compilation. The error context and fix instructions are included in the scenario above. Pay special attention to:
+
+1. **Specific Error Messages**: Address each compilation error mentioned
+2. **Missing Imports/Dependencies**: Add any missing using statements or imports
+3. **Method Signature Issues**: Ensure method calls match exact signatures
+4. **Type Safety**: Fix any type-related compilation errors
+5. **API Usage**: Use only verified APIs that exist in the target SDK
+
+**CRITICAL COMPILATION REQUIREMENTS:**
+🚨 The generated code MUST compile without errors. Follow these MANDATORY rules:
+
+**Error-Specific Fixes:**
+1. READ the error context carefully and address each specific issue
+2. Use only verified SDK methods and properties
+3. Include ALL required using/import statements
+4. Fix type mismatches and null reference issues
+5. Use proper exception handling patterns
+6. Verify async/await patterns are correct
+7. Check collection type usage and iteration patterns
+
+**Universal Code Quality Rules:**
+1. ONLY use classes/methods that exist in the actual SDK/library being tested
+2. VERIFY each method exists before calling it (check official documentation)
+3. Use proper language-specific patterns (async/await, error handling, etc.)
+4. Include ALL required import/using/include statements at the top
+5. Use correct type declarations and avoid assumptions about data types
+6. Handle language-specific collection types correctly (no indexing on iterators)
+7. Use the SDK's recommended patterns for object instantiation and method calls
+8. Handle error cases and exceptions properly according to language conventions
+9. Include proper dependency declarations in code comments
+10. Follow language-specific naming conventions and syntax rules
+
+**Testing Framework Requirements:**
+Use the standard testing framework for {{language}}:
+- C#: NUnit with [Test], [TestFixture], Assert.That() syntax
+- Python: pytest with fixtures and assert statements
+- JavaScript: Jest with describe(), it(), expect() patterns
+- Java: JUnit 5 with @Test, assertEquals() methods
+- Go: built-in testing package with Test functions
+- Rust: built-in test framework with #[test] attributes
+
+**Output Format:**
+Generate the FIXED test code in the following format:
+
+### Fixed Test Implementation  
+```{{language.lower()}}
+// REQUIRED DEPENDENCIES (specify for {{language}}):
+// [List all required packages/libraries with installation commands]
+
+// Required imports/using statements for {{language}}
+// [Include ALL necessary imports - especially those that were missing]
+
+// Test class/module with descriptive name
+// [Complete FIXED test implementation with verified method calls only]
+```
+
+**VERIFICATION CHECKLIST (Must satisfy ALL):**
+✅ All compilation errors from previous attempt are addressed
+✅ All classes/methods used actually exist in the target SDK/library
+✅ All required imports/using/include statements included
+✅ Proper async/synchronous patterns for the target language
+✅ No assumptions about method behavior without verification
+✅ Proper exception/error handling for the language
+✅ Clear dependency requirements specified with installation instructions
+✅ Type-safe operations with proper null/undefined checking
+✅ Test methods follow language-specific naming conventions
+✅ No direct indexing on collection types that don't support it
+✅ All syntax follows language-specific rules and conventions
+
+**IMPORTANT:** 
+- Focus FIRST on fixing the compilation errors mentioned in the error context
+- Prioritize COMPILATION SUCCESS over feature completeness
+- Use conservative, well-documented API calls only
+- Include comprehensive error handling appropriate for the language
+- When in doubt, use simpler, more basic approaches that are guaranteed to compile

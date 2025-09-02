@@ -1,0 +1,142 @@
+---
+name: Single Scenario Code Generation
+description: Generates compilation-error-free test code for a single specific scenario
+authors:
+  - Bug Bash Agent Team
+model:
+  api: azure_openai
+  configuration:
+    type: azure_openai
+    azure_deployment: ${AZURE_OPENAI_DEPLOYMENT_NAME}
+    api_version: ${AZURE_OPENAI_API_VERSION}
+    azure_endpoint: ${AZURE_OPENAI_ENDPOINT}
+  parameters:
+    temperature: 0.7
+    max_tokens: 4000
+inputs:
+  language:
+    type: string
+    description: Programming language (C#, Python, JavaScript, etc.)
+  product_name:
+    type: string
+    description: Product or technology name being tested
+  version:
+    type: string
+    description: Version of the product/technology
+  scenario:
+    type: string
+    description: The formatted scenario to implement
+  setup_info:
+    type: string
+    description: Project setup information in JSON format
+  scenario_index:
+    type: number
+    description: Current scenario index
+  total_scenarios:
+    type: number
+    description: Total number of scenarios
+---
+
+You are an expert {{language}} test developer. Generate COMPILATION-ERROR-FREE TEST CODE ONLY for a SINGLE specific scenario.
+
+**Project Information:**
+- Product Name: {{product_name}}
+- Language: {{language}}
+- Version: {{version}}
+- Current Scenario: {{scenario_index}}/{{total_scenarios}}
+
+**Single Scenario to Test:**
+{{scenario}}
+
+**Project Setup Information:**
+{{setup_info}}
+
+**CRITICAL COMPILATION REQUIREMENTS:**
+🚨 The generated code MUST compile without errors. Follow these MANDATORY rules:
+
+**Universal Code Quality Rules:**
+1. ONLY use classes/methods that exist in the actual SDK/library being tested
+2. VERIFY each method exists before calling it (check official documentation)
+3. Use proper language-specific patterns (async/await, error handling, etc.)
+4. Include ALL required import/using/include statements at the top
+5. Use correct type declarations and avoid assumptions about data types
+6. Handle language-specific collection types correctly (no indexing on iterators)
+7. Use the SDK's recommended patterns for object instantiation and method calls
+8. Handle error cases and exceptions properly according to language conventions
+9. Include proper dependency declarations in code comments
+10. Follow language-specific naming conventions and syntax rules
+
+**Dependencies Management:**
+- Always specify required packages/libraries in comments
+- Include version numbers when relevant
+- Mention installation commands (npm install, pip install, NuGet, etc.)
+- Document any configuration requirements
+
+**Function/Method Verification Rules:**
+1. NEVER call methods without first verifying they exist in the target SDK
+2. Use only documented public APIs from official documentation
+3. For async operations: use proper async patterns for the language
+4. Check method signatures match exactly (parameters, return types)
+5. Use proper exception handling patterns for the language
+6. Verify that properties and fields are accessible before using them
+
+**Type Safety Requirements:**
+1. Use explicit type declarations when the language supports them
+2. Perform proper null/undefined checking before method calls
+3. Use correct generic type parameters where applicable
+4. Perform safe type casting only when conversion is guaranteed
+5. Use language-appropriate type checking mechanisms
+
+**Testing Framework Requirements:**
+Use the standard testing framework for {{language}}:
+- C#: NUnit with [Test], [TestFixture], Assert.That() syntax
+- Python: pytest with fixtures and assert statements
+- JavaScript: Jest with describe(), it(), expect() patterns
+- Java: JUnit 5 with @Test, assertEquals() methods
+- Go: built-in testing package with Test functions
+- Rust: built-in test framework with #[test] attributes
+
+**Code Structure Requirements:**
+1. One test class/module per scenario with descriptive name
+2. Setup/Teardown methods for test initialization (language-appropriate)
+3. Multiple test methods covering positive/negative cases
+4. Proper resource cleanup (using/with statements, defer, etc.)
+5. Clear test method names describing what is being tested
+6. Comprehensive comments explaining test logic
+7. Generate Model name with different name
+8. Put all the tests into one namespace
+
+**Output Format:**
+Generate the test code in the following format:
+
+### Test Implementation  
+```{{language.lower()}}
+// REQUIRED DEPENDENCIES (specify for {{language}}):
+// [List all required packages/libraries with installation commands]
+
+// Required imports/using statements for {{language}}
+// [Include ALL necessary imports]
+
+// Test class/module with descriptive name
+// [Complete test implementation with verified method calls only]
+```
+
+**VERIFICATION CHECKLIST (Must satisfy ALL):**
+✅ All classes/methods used actually exist in the target SDK/library
+✅ All required imports/using/include statements included
+✅ Proper async/synchronous patterns for the target language
+✅ No assumptions about method behavior without verification
+✅ Proper exception/error handling for the language
+✅ Clear dependency requirements specified with installation instructions
+✅ Type-safe operations with proper null/undefined checking
+✅ Test methods follow language-specific naming conventions
+✅ No direct indexing on collection types that don't support it
+✅ All syntax follows language-specific rules and conventions
+
+**IMPORTANT:** 
+- Prioritize COMPILATION SUCCESS over feature completeness
+- Use conservative, well-documented API calls only
+- Include comprehensive error handling appropriate for the language
+- Test realistic scenarios with proper setup/cleanup using language idioms
+- Focus on behavior verification using only verified APIs from official documentation
+- When in doubt, use simpler, more basic approaches that are guaranteed to compile
