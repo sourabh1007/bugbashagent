@@ -1,0 +1,21 @@
+---
+name: Rust Best Practices Sub-Prompt
+description: Language-specific best practices sub-prompt for Rust code generation to avoid compilation errors
+inputs:
+  testing_framework:
+    type: string
+    description: The testing framework being used for Rust
+---
+
+**Rust Specific Best Practices:**
+1. Include proper use statements for external crates
+2. Handle Result/Option types: `match result { Ok(val) => ..., Err(e) => ... }`
+3. Manage ownership and borrowing correctly
+4. Use proper error propagation with ? operator
+5. Handle lifetime parameters in function signatures
+6. Use match expressions for pattern matching
+7. Initialize collections: `Vec::with_capacity()`
+
+**{{testing_framework}} Framework Guidelines:**
+- Standard testing: Use #[test], #[cfg(test)], assert_eq!()
+- Custom frameworks: Follow crate-specific patterns with proper assertions

@@ -12,29 +12,43 @@ Each agent passes its output to the next agent in sequence.
 
 import os
 import sys
-from langchain_openai import AzureChatOpenAI
-# Import specific configuration items instead of the config module
+
+# Import integrations
+from integrations import (
+    get_azure_openai_client,
+    check_azure_config,
+    get_missing_azure_config,
+    setup_langsmith,
+    configure_llm_tracing,
+    LangSmithIntegration
+)
+
+# Import specific configuration items
 from config_package import (
     AZURE_OPENAI_API_KEY,
     AZURE_OPENAI_ENDPOINT,
     AZURE_OPENAI_API_VERSION,
     AZURE_OPENAI_DEPLOYMENT_NAME,
     MODEL_NAME,
-    TEMPERATURE
+    TEMPERATURE,
+    LANGCHAIN_API_KEY,
+    LANGCHAIN_PROJECT
 )
 from workflow import AgentWorkflow
 
 
+def get_langsmith_dashboard_url():
+    """Get LangSmith dashboard URL"""
+    try:
+        langsmith_client = LangSmithIntegration()
+        return langsmith_client.get_dashboard_url()
+    except:
+        return "https://smith.langchain.com"
+
+
 def check_azure_config():
     """Check if Azure OpenAI configuration is set up"""
-    missing_configs = []
-    
-    if not AZURE_OPENAI_API_KEY:
-        missing_configs.append("AZURE_OPENAI_API_KEY")
-    if not AZURE_OPENAI_ENDPOINT:
-        missing_configs.append("AZURE_OPENAI_ENDPOINT")
-    if not AZURE_OPENAI_DEPLOYMENT_NAME:
-        missing_configs.append("AZURE_OPENAI_DEPLOYMENT_NAME")
+    missing_configs = get_missing_azure_config()
     
     if missing_configs:
         print("❌ Error: Missing Azure OpenAI configuration!")
@@ -45,7 +59,16 @@ def check_azure_config():
         print("AZURE_OPENAI_API_KEY=your_api_key")
         print("AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/")
         print("AZURE_OPENAI_DEPLOYMENT_NAME=your-deployment-name")
+        print("LANGCHAIN_API_KEY=your_langsmith_api_key")
+        print("LANGCHAIN_PROJECT=BugBashAgent")
         sys.exit(1)
+    
+    # Check LangSmith configuration (optional)
+    if LANGCHAIN_API_KEY:
+        print(f"✅ LangSmith configured for project: {LANGCHAIN_PROJECT}")
+        print(f"🔗 Dashboard: {get_langsmith_dashboard_url()}")
+    else:
+        print("⚠️ LangSmith not configured (optional) - set LANGCHAIN_API_KEY for tracing")
 
 
 def get_user_input():
@@ -315,13 +338,10 @@ def main():
         
         # Initialize Azure OpenAI LLM
         print("\n🔧 Initializing Azure OpenAI Language Model...")
-        llm = AzureChatOpenAI(
-            azure_endpoint=AZURE_OPENAI_ENDPOINT,
-            api_key=AZURE_OPENAI_API_KEY,
-            api_version=AZURE_OPENAI_API_VERSION,
-            deployment_name=AZURE_OPENAI_DEPLOYMENT_NAME,
-            temperature=TEMPERATURE
-        )
+        llm = get_azure_openai_client(temperature=TEMPERATURE)
+        
+        # Configure LLM for LangSmith tracing
+        llm = configure_llm_tracing(llm)
         
         # Create and execute workflow
         print("🚀 Starting multi-agent code development workflow...")

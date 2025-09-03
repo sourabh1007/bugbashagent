@@ -20,6 +20,7 @@ The **Bug Bash Agent** is an advanced AI-powered code generation system that tra
 - ✅ **External Prompt Management**: Prompty file system with YAML metadata
 - ✅ **Organized Tool Architecture**: Categorized tool structure for maintainability
 - ✅ **SDK-Specific Optimization**: Tailored for major SDKs and frameworks
+- ✅ **LangSmith Integration**: Advanced monitoring, tracing, and observability
 
 ## 🏗️ System Architecture
 
@@ -31,9 +32,7 @@ The system uses a sophisticated 2-agent workflow:
 
 With intelligent feedback loops for compilation error handling and selective scenario regeneration.
 
-### 🔧 Recent Refactoring (v2.0)
-
-The project has undergone major architectural improvements:
+### 🔧 Architecture Features
 
 #### External Prompt Management
 - **Prompty Files**: All LLM prompts moved to `.prompty` files with YAML metadata
@@ -85,7 +84,7 @@ cd bugbashagent
 pip install -r requirements.txt
 
 # Copy environment template
-cp .env.example .env
+cp .env.template .env
 ```
 
 ### 3. Configuration
@@ -93,45 +92,59 @@ cp .env.example .env
 Edit the `.env` file with your Azure OpenAI credentials:
 
 ```env
-# Azure OpenAI Configuration
+# Azure OpenAI Configuration (Required)
 AZURE_OPENAI_API_KEY=your_azure_openai_api_key_here
 AZURE_OPENAI_ENDPOINT=https://your-resource-name.openai.azure.com/
 AZURE_OPENAI_API_VERSION=2024-02-15-preview
-AZURE_OPENAI_DEPLOYMENT_NAME=your-deployment-name
+AZURE_OPENAI_DEPLOYMENT_NAME=your_deployment_name_here
 
-# Model Configuration (Optional)
-MODEL_NAME=gpt-4-turbo  # Recommended for best results
-TEMPERATURE=0.7
+# LangSmith Configuration (Optional - for monitoring)
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_API_KEY=your_langsmith_api_key_here
+LANGCHAIN_PROJECT=BugBashAgent
 ```
+
+### 4. LangSmith Integration (Optional)
+
+For advanced monitoring, tracing, and observability, integrate with LangSmith:
+
+1. **Sign up** at [LangSmith](https://smith.langchain.com/)
+2. **Create an API key** in your LangSmith dashboard
+3. **Set environment variables** in your `.env` file:
+   ```env
+   LANGCHAIN_TRACING_V2=true
+   LANGCHAIN_API_KEY=your_langsmith_api_key_here
+   LANGCHAIN_PROJECT=BugBashAgent
+   ```
+4. **Monitor your runs** at the [LangSmith Dashboard](https://smith.langchain.com/projects)
+
+**LangSmith Features:**
+- 📊 Real-time workflow monitoring
+- 🔍 Detailed agent execution traces
+- 📈 Performance metrics and analytics  
+- 🐛 Error tracking and debugging
+- 💾 Complete prompt and response logging
+- 📋 Workflow success/failure analytics
+
+**LangSmith Setup:**
+1. Sign up at [LangSmith](https://smith.langchain.com/)
+2. Create an API key in your dashboard
+3. Run the setup script: `python setup_langsmith.py`
+4. Add your API key to the `.env` file
+5. View traces at [LangSmith Dashboard](https://smith.langchain.com/projects)
 
 ### 4. Run the Application
 
 ```bash
-# Interactive mode
 python main.py
-
-# File input mode
-python run_with_file.py
 ```
 
 ## 🎛️ Usage Examples
 
-### Interactive Mode
-
-```bash
-python main.py
-```
-
 Choose from:
 1. **Direct Text Input**: Paste requirements directly
-2. **File Input**: Provide local file path
+2. **File Input**: Provide local file path  
 3. **URL Input**: Analyze documentation from web URLs
-
-### File Input Mode
-
-```bash
-python run_with_file.py path/to/your/requirements.txt
-```
 
 ### Sample Input Formats
 
@@ -154,6 +167,11 @@ bugbashagent/
 │   └── 📄 package_versions.py         # SDK version management
 ├── 📁 factories/                       # Prompt generation factories
 │   └── 📄 prompt_factory.py           # Language-specific prompt strategies
+├── 📁 integrations/                    # External system integrations
+│   ├── 📁 azure_openai/               # Azure OpenAI client integration
+│   ├── 📁 langsmith/                  # LangSmith monitoring & tracing
+│   ├── 📁 web/                        # Web content fetching utilities
+│   └── 📁 file_processing/            # Multi-format file processing
 ├── 📁 patterns/                        # Language configuration patterns
 │   ├── 📄 language_config.py          # Language-specific configurations
 │   └── 📁 languages/                  # Individual language configs
@@ -164,7 +182,6 @@ bugbashagent/
 │   └── 📁 code_generator/             # Advanced code generation tools
 ├── 📁 workflow_outputs/               # Generated outputs (timestamped folders)
 ├── 📄 main.py                         # Main application entry point
-├── 📄 run_with_file.py               # File-based input runner
 ├── 📄 workflow.py                     # Multi-agent workflow orchestration
 ├── 📄 requirements.txt                # Python dependencies
 └── 📄 README.md                       # This file

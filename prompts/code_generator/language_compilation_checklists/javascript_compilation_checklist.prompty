@@ -1,0 +1,15 @@
+---
+name: JavaScript Compilation Checklist Sub-Prompt
+description: JavaScript/TypeScript-specific compilation verification checklist for code generation quality assurance
+inputs:
+  language:
+    type: string
+    description: Programming language (should be JavaScript/TypeScript for this checklist)
+---
+
+**JavaScript/TypeScript Compilation Checklist:**
+✅ **Variable Declarations**: Use const/let (prefer over var)
+✅ **Null/Undefined Checks**: Check before accessing properties
+✅ **Async/Await**: Use proper async patterns
+✅ **Import/Export**: Use proper module syntax
+✅ **Error Handling**: Use try-catch blocks for risky operations

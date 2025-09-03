@@ -1,0 +1,118 @@
+---
+name: Cosmos DB Go SDK Guidance
+description: Go specific guidance for Azure Cosmos DB SDK
+authors:
+  - Bug Bash Agent Team
+inputs:
+  version:
+    type: string
+    description: SDK version being targeted
+---
+
+**COSMOS DB GO SDK SPECIFIC GUIDANCE:**
+
+**🔧 CORE GO CONCEPTS:**
+- **Client**: Use `azcosmos.NewClient()` with endpoint and key credential
+- **Database**: Operations through client with database ID
+- **Container**: Operations through client with database and container IDs
+- **Items**: CRUD operations with partition key handling
+- **Queries**: Use `client.QueryItems()` with SQL query strings
+
+**📋 ESSENTIAL GO PATTERNS:**
+```go
+import (
+    "context"
+    "github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos"
+)
+
+// Client initialization
+cred, err := azcosmos.NewKeyCredential(cosmosKey)
+if err != nil {
+    return err
+}
+client, err := azcosmos.NewClient(cosmosEndpoint, cred, nil)
+
+// CRUD operations
+ctx := context.Background()
+response, err := client.CreateItem(ctx, azcosmos.NewPartitionKeyString(partitionKey), item, nil)
+```
+
+**⚠️ VERSION-SPECIFIC CONSIDERATIONS:**
+- **Package**: Use `github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos`
+- **Error Handling**: Always check error returns
+- **Context**: Use context.Context for all operations
+if err != nil {
+    // Handle error
+}
+
+client, err := azcosmos.NewClient(cosmosEndpoint, cred, nil)
+if err != nil {
+    // Handle error
+}
+
+// Database operations
+ctx := context.Background()
+dbProps := azcosmos.DatabaseProperties{ID: "TestDB"}
+dbResp, err := client.CreateDatabase(ctx, dbProps, nil)
+
+// Container operations
+containerProps := azcosmos.ContainerProperties{
+    ID: "TestContainer",
+    PartitionKeyDefinition: azcosmos.PartitionKeyDefinition{
+        Paths: []string{"/id"},
+    },
+}
+containerResp, err := client.CreateContainer(ctx, "TestDB", containerProps, nil)
+
+// Create item
+pk := azcosmos.NewPartitionKeyString("partitionKeyValue")
+itemResp, err := client.CreateItem(ctx, "TestDB", "TestContainer", pk, item, nil)
+
+// Read item
+readResp, err := client.ReadItem(ctx, "TestDB", "TestContainer", pk, itemID, nil)
+
+// Query items
+queryPager := client.NewQueryItemsPager("TestDB", "TestContainer", 
+    "SELECT * FROM c WHERE c.status = 'active'", nil)
+
+for queryPager.More() {
+    queryResp, err := queryPager.NextPage(ctx)
+    if err != nil {
+        // Handle error
+    }
+    // Process items
+}
+
+// Replace item
+replaceResp, err := client.ReplaceItem(ctx, "TestDB", "TestContainer", pk, itemID, updatedItem, nil)
+
+// Delete item
+deleteResp, err := client.DeleteItem(ctx, "TestDB", "TestContainer", pk, itemID, nil)
+```
+
+**⚠️ GO VERSION-SPECIFIC CONSIDERATIONS:**
+- **SDK Package**: Use `github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos`
+- **Context**: Always pass `context.Context` as first parameter
+- **Error Handling**: Check errors for all operations
+- **Partition Key**: Use `azcosmos.NewPartitionKeyString()` or similar
+
+**🚨 GO COMPILATION ERRORS TO AVOID:**
+❌ **Missing Context**: Operations without `context.Context` parameter
+❌ **Unchecked Errors**: Not checking error return values
+❌ **Wrong Import**: Using old SDK package paths
+❌ **Missing Partition Key**: Operations without partition key parameter
+❌ **Incorrect Types**: Using wrong partition key types
+
+**✅ GO VERIFIED PATTERNS:**
+✅ Import `github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos`
+✅ Pass `context.Context` as first parameter to all operations
+✅ Check error return values for all operations
+✅ Use `azcosmos.NewPartitionKeyString()` for partition keys
+✅ Handle paged results with `NextPage()` pattern
+
+**🎯 GO TESTING FOCUS:**
+- Client initialization with NewKeyCredential and NewClient
+- Database/Container creation with proper error handling
+- CRUD operations with context and partition key
+- Query operations with pager pattern
+- Comprehensive error handling throughout

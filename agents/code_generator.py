@@ -5,14 +5,17 @@ import subprocess
 import threading
 import time
 from datetime import datetime
+import jinja2
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 from .base_agent import BaseAgent
+from integrations.langsmith import trace_agent_execution
 
 # Import the new tools
 from tools.file_management import FileCreator
 from tools.parsing import ProjectStructureParser, CodeBlockExtractor, ScenarioCategorizer
 from tools.compilation import CodeCompiler
+from tools.language_best_practices_manager import LanguageBestPracticesManager
 from tools.project_generators import (
     CSharpProjectGenerator,
     PythonProjectGenerator,
@@ -153,6 +156,9 @@ class CodeGenerator(BaseAgent):
         # Initialize prompt loader for external prompty files
         self.prompty_loader = PromptyLoader()
         
+        # Initialize language best practices manager
+        self.language_best_practices_manager = LanguageBestPracticesManager()
+        
         # Initialize tools
         self.file_creator = FileCreator()
         self.structure_parser = ProjectStructureParser()
@@ -253,6 +259,7 @@ class CodeGenerator(BaseAgent):
         
         return strategy.generate_prompt(context or {})
     
+    @trace_agent_execution("Code Generator")
     def execute(self, input_data: Any) -> Dict[str, Any]:
         """Generate code one scenario at a time with compilation feedback loop"""
         self.log(f"Starting scenario-by-scenario code generation with compilation feedback")
@@ -518,10 +525,18 @@ class CodeGenerator(BaseAgent):
             prompt_template = self.prompty_loader.create_prompt_template(
                 "code_generator", "error_fix_regeneration"
             )
+            # Get LLM with prompty-specific settings
+            llm_for_chain = self.prompty_loader.create_llm_with_prompty_settings(
+                self.llm, "code_generator", "error_fix_regeneration"
+            )
         else:
             # Use standard scenario generation prompt
             prompt_template = self.prompty_loader.create_prompt_template(
                 "code_generator", "scenario_generation"
+            )
+            # Get LLM with prompty-specific settings
+            llm_for_chain = self.prompty_loader.create_llm_with_prompty_settings(
+                self.llm, "code_generator", "scenario_generation"
             )
         
         if not prompt_template:
@@ -543,7 +558,7 @@ class CodeGenerator(BaseAgent):
                 "code_generator", "scenario_generation"
             )
         
-        chain = LLMChain(llm=self.llm, prompt=prompt_template)
+        chain = LLMChain(llm=llm_for_chain, prompt=prompt_template)
         
         # Process each scenario individually
         for i, scenario in enumerate(scenarios, 1):
@@ -554,10 +569,20 @@ class CodeGenerator(BaseAgent):
                 scenario_text = self._format_single_scenario_for_prompt(scenario, i)
                 setup_info_text = json.dumps(setup_info, indent=2)
                 
+                # Get language-specific testing framework and best practices
+                testing_framework = self._get_testing_framework(language)
+                language_best_practices = self._get_language_best_practices(language, testing_framework)
+                language_compilation_checklist = self._get_language_compilation_checklist(language)
+                product_specific_guidance = self._get_product_specific_guidance(product_name, language, version)
+                
                 # Prepare prompt variables for single scenario
                 prompt_vars = {
                     "language": language.upper(),
                     "product_name": product_name,
+                    "testing_framework": testing_framework,
+                    "language_best_practices": language_best_practices,
+                    "language_compilation_checklist": language_compilation_checklist,
+                    "product_specific_guidance": product_specific_guidance,
                     "version": version,
                     "scenario": scenario_text,
                     "setup_info": setup_info_text,
@@ -566,7 +591,9 @@ class CodeGenerator(BaseAgent):
                 }
                 
                 # Log the actual prompt that will be sent to LLM
-                actual_prompt = prompt_template.format(**prompt_vars)
+                # Use Jinja2 rendering since prompt_template uses jinja2 format
+                jinja_template = jinja2.Template(prompt_template.template)
+                actual_prompt = jinja_template.render(**prompt_vars)
                 scenario_name = self._get_scenario_name(scenario).replace(" ", "_").replace("/", "_")
                 self.log_prompt_to_file(
                     actual_prompt, 
@@ -764,6 +791,44 @@ class CodeGenerator(BaseAgent):
         else:
             return f"**Scenario {index}:** {str(scenario)}"
     
+    def _get_testing_framework(self, language: str) -> str:
+        """Get the appropriate testing framework for the given language"""
+        language_lower = language.lower()
+        
+        testing_frameworks = {
+            'c#': 'NUnit testing framework with [Test], [TestFixture], Assert.That() syntax',
+            'csharp': 'NUnit testing framework with [Test], [TestFixture], Assert.That() syntax',
+            'python': 'pytest with fixtures and assert statements',
+            'javascript': 'Jest with describe(), it(), expect() patterns',
+            'node.js': 'Jest with describe(), it(), expect() patterns',
+            'js': 'Jest with describe(), it(), expect() patterns',
+            'java': 'JUnit 5 with @Test, assertEquals() methods',
+            'go': 'built-in testing package with Test functions',
+            'rust': 'built-in test framework with #[test] attributes'
+        }
+        
+        return testing_frameworks.get(language_lower, f'the standard testing framework for {language}')
+    
+    def _get_language_best_practices(self, language: str, testing_framework: str = None) -> str:
+        """Get language-specific best practices from prompty files"""
+        if testing_framework is None:
+            testing_framework = self._get_testing_framework(language)
+            
+        return self.language_best_practices_manager.get_language_best_practices(
+            language=language,
+            testing_framework=testing_framework
+        )
+    
+    def _get_language_compilation_checklist(self, language: str) -> str:
+        """Get language-specific compilation checklist from prompty file"""
+        return self.language_best_practices_manager.get_language_compilation_checklist(language)
+    
+    def _get_product_specific_guidance(self, product_name: str, language: str = "", version: str = "") -> str:
+        """Get product-specific guidance for SDK/API usage."""
+        return self.language_best_practices_manager.get_product_specific_guidance(
+            product_name, language, version
+        )
+
     def _extract_scenario_code_files(self, generated_content: str, project_dir: str, language: str, scenario_index: int, scenario_name: str) -> List[str]:
         """Extract and save only test files for each scenario in the same project directory"""
         import re
@@ -3596,16 +3661,31 @@ class {class_name}Test {{
             self.log(f"❌ No prompt template available for language: {language}")
             return None
         
-        chain = LLMChain(llm=self.llm, prompt=prompt_template)
+        # Get LLM with prompty-specific settings for error fix regeneration
+        llm_for_chain = self.prompty_loader.create_llm_with_prompty_settings(
+            self.llm, "code_generator", "error_fix_regeneration"
+        )
+        
+        chain = LLMChain(llm=llm_for_chain, prompt=prompt_template)
         
         # Format scenario for prompt (this will include error context)
         scenario_text = self._format_single_scenario_for_prompt(enhanced_scenario, scenario_index)
         setup_info_text = json.dumps(setup_info, indent=2)
         
+        # Get language-specific testing framework and best practices for error fix
+        testing_framework = self._get_testing_framework(language)
+        language_best_practices = self._get_language_best_practices(language, testing_framework)
+        language_compilation_checklist = self._get_language_compilation_checklist(language)
+        product_specific_guidance = self._get_product_specific_guidance(product_name, language, version)
+        
         # Prepare prompt variables for single scenario
         prompt_vars = {
             "language": language.upper(),
             "product_name": product_name,
+            "testing_framework": testing_framework,
+            "language_best_practices": language_best_practices,
+            "language_compilation_checklist": language_compilation_checklist,
+            "product_specific_guidance": product_specific_guidance,
             "version": version,
             "scenario": scenario_text,
             "setup_info": setup_info_text,
@@ -3614,7 +3694,9 @@ class {class_name}Test {{
         }
         
         # Log the actual prompt that will be sent to LLM for error fixing
-        actual_prompt = prompt_template.format(**prompt_vars)
+        # Use Jinja2 rendering since prompt_template uses jinja2 format
+        jinja_template = jinja2.Template(prompt_template.template)
+        actual_prompt = jinja_template.render(**prompt_vars)
         scenario_name = enhanced_scenario.get("scenario_name", "unknown").replace(" ", "_").replace("/", "_")
         self.log_prompt_to_file(
             actual_prompt, 
@@ -4006,15 +4088,30 @@ class {class_name}Test {{
                 self.log(f"❌ No prompt template available for language: {language}")
                 return None
             
-            chain = LLMChain(llm=self.llm, prompt=prompt_template)
+            # Get LLM with prompty-specific settings for scenario generation
+            llm_for_chain = self.prompty_loader.create_llm_with_prompty_settings(
+                self.llm, "code_generator", "scenario_generation"
+            )
+            
+            chain = LLMChain(llm=llm_for_chain, prompt=prompt_template)
             
             # Format scenario for prompt
             formatted_scenario = self._format_single_scenario_for_prompt(scenario, 1)
+            
+            # Get language-specific testing framework and best practices
+            testing_framework = self._get_testing_framework(language)
+            language_best_practices = self._get_language_best_practices(language, testing_framework)
+            language_compilation_checklist = self._get_language_compilation_checklist(language)
+            product_specific_guidance = self._get_product_specific_guidance(product_name, language, version)
             
             # Prepare prompt variables for logging
             prompt_vars = {
                 "language": language,
                 "product_name": product_name,
+                "testing_framework": testing_framework,
+                "language_best_practices": language_best_practices,
+                "language_compilation_checklist": language_compilation_checklist,
+                "product_specific_guidance": product_specific_guidance,
                 "version": version,
                 "scenario": formatted_scenario,
                 "setup_info": setup_info,
@@ -4023,7 +4120,9 @@ class {class_name}Test {{
             }
             
             # Log the actual prompt that will be sent to LLM
-            actual_prompt = prompt_template.format(**prompt_vars)
+            # Use Jinja2 rendering since prompt_template uses jinja2 format
+            jinja_template = jinja2.Template(prompt_template.template)
+            actual_prompt = jinja_template.render(**prompt_vars)
             scenario_name = self._get_scenario_name(scenario).replace(" ", "_").replace("/", "_")
             self.log_prompt_to_file(
                 actual_prompt, 

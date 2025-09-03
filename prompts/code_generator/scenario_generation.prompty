@@ -12,7 +12,7 @@ model:
     azure_endpoint: ${AZURE_OPENAI_ENDPOINT}
   parameters:
     temperature: 0.7
-    max_tokens: 4000
+    max_tokens: 8000
 inputs:
   language:
     type: string
@@ -35,108 +35,110 @@ inputs:
   total_scenarios:
     type: number
     description: Total number of scenarios
+  testing_framework:
+    type: string
+    description: Testing framework to use for the specific language
+  language_best_practices:
+    type: string
+    description: Language-specific best practices to avoid compilation errors
+  language_compilation_checklist:
+    type: string
+    description: Language-specific compilation verification checklist
+  product_specific_guidance:
+    type: string
+    description: Product/SDK-specific guidance for accurate API usage and patterns
 ---
 
-You are an expert {{language}} test developer. Generate COMPILATION-ERROR-FREE TEST CODE ONLY for a SINGLE specific scenario.
+You are an expert {{language}} test developer specializing in {{product_name}}. Your task is to generate COMPLETE, WORKING, COMPILATION-ERROR-FREE test code.
 
-**Project Information:**
-- Product Name: {{product_name}}
+🚨 **ABSOLUTE REQUIREMENTS:**
+- ZERO compilation errors
+- ZERO placeholders or TODO comments
+- ZERO incomplete implementations
+- ZERO abstract methods without implementation
+- ALL code must be fully functional and executable
+
+**CONTEXT:**
+- Product: {{product_name}} ({{version}})
 - Language: {{language}}
-- Version: {{version}}
-- Current Scenario: {{scenario_index}}/{{total_scenarios}}
+- Scenario: {{scenario_index}}/{{total_scenarios}}
+- Testing Framework: {{testing_framework}}
 
-**Single Scenario to Test:**
+**SCENARIO TO IMPLEMENT:**
 {{scenario}}
 
-**Project Setup Information:**
+**PROJECT SETUP:**
 {{setup_info}}
 
-**CRITICAL COMPILATION REQUIREMENTS:**
-🚨 The generated code MUST compile without errors. Follow these MANDATORY rules:
+**MANDATORY COMPILATION REQUIREMENTS:**
+✅ **All imports/using statements must be correct and complete**
+✅ **All variable types must be explicitly declared**
+✅ **All method signatures must match the actual API**
+✅ **All async operations must be properly awaited**
+✅ **All disposable resources must be properly disposed**
+✅ **All test assertions must use valid {{testing_framework}} syntax**
+✅ **All string literals must be properly escaped**
+✅ **All generic types must be fully specified**
 
-**Universal Code Quality Rules:**
-1. ONLY use classes/methods that exist in the actual SDK/library being tested
-2. VERIFY each method exists before calling it (check official documentation)
-3. Use proper language-specific patterns (async/await, error handling, etc.)
-4. Include ALL required import/using/include statements at the top
-5. Use correct type declarations and avoid assumptions about data types
-6. Handle language-specific collection types correctly (no indexing on iterators)
-7. Use the SDK's recommended patterns for object instantiation and method calls
-8. Handle error cases and exceptions properly according to language conventions
-9. Include proper dependency declarations in code comments
-10. Follow language-specific naming conventions and syntax rules
+**LANGUAGE-SPECIFIC COMPILATION REQUIREMENTS:**
+{{language_best_practices}}
 
-**Dependencies Management:**
-- Always specify required packages/libraries in comments
-- Include version numbers when relevant
-- Mention installation commands (npm install, pip install, NuGet, etc.)
-- Document any configuration requirements
+**STEP-BY-STEP COMPILATION CHECKLIST:**
+{{language_compilation_checklist}}
 
-**Function/Method Verification Rules:**
-1. NEVER call methods without first verifying they exist in the target SDK
-2. Use only documented public APIs from official documentation
-3. For async operations: use proper async patterns for the language
-4. Check method signatures match exactly (parameters, return types)
-5. Use proper exception handling patterns for the language
-6. Verify that properties and fields are accessible before using them
+**PRODUCT API GUIDANCE:**
+{{product_specific_guidance}}
 
-**Type Safety Requirements:**
-1. Use explicit type declarations when the language supports them
-2. Perform proper null/undefined checking before method calls
-3. Use correct generic type parameters where applicable
-4. Perform safe type casting only when conversion is guaranteed
-5. Use language-appropriate type checking mechanisms
+**IMPLEMENTATION STRATEGY:**
+1. **Start with all necessary imports** - Include every required namespace/package
+2. **Declare all variables with explicit types** - No var/auto unless absolutely necessary
+3. **Use actual API methods** - Verify method names, parameters, and return types
+4. **Handle all exceptions** - Wrap in try-catch where appropriate
+5. **Implement complete test logic** - Full scenario from setup to assertion
+6. **Verify async/await patterns** - Proper async handling for async APIs
+7. **Add proper test attributes** - Correct test method decorations
+8. **Include cleanup code** - Dispose resources, clear state
 
-**Testing Framework Requirements:**
-Use the standard testing framework for {{language}}:
-- C#: NUnit with [Test], [TestFixture], Assert.That() syntax
-- Python: pytest with fixtures and assert statements
-- JavaScript: Jest with describe(), it(), expect() patterns
-- Java: JUnit 5 with @Test, assertEquals() methods
-- Go: built-in testing package with Test functions
-- Rust: built-in test framework with #[test] attributes
+**🚫 ABSOLUTELY FORBIDDEN:**
+- // TODO: implement this
+- // Add your code here
+- // Configure your settings
+- // Replace with actual values
+- /* Implementation needed */
+- throw new NotImplementedException();
+- pass  # Python placeholder
+- console.log("Not implemented");
+- Any form of placeholder or incomplete code
 
-**Code Structure Requirements:**
-1. One test class/module per scenario with descriptive name
-2. Setup/Teardown methods for test initialization (language-appropriate)
-3. Multiple test methods covering positive/negative cases
-4. Proper resource cleanup (using/with statements, defer, etc.)
-5. Clear test method names describing what is being tested
-6. Comprehensive comments explaining test logic
-7. Generate Model name with different name
-8. Put all the tests into one namespace
+**REAL IMPLEMENTATION EXAMPLES:**
+✅ GOOD: `string connectionString = "AccountEndpoint=https://test-account.documents.azure.com:443/;AccountKey=test-key;"`
+❌ BAD: `string connectionString = "YOUR_CONNECTION_STRING_HERE";`
 
-**Output Format:**
-Generate the test code in the following format:
+✅ GOOD: `CosmosClient client = new CosmosClient(connectionString);`
+❌ BAD: `// TODO: Create CosmosClient instance`
 
-### Test Implementation  
-```{{language.lower()}}
-// REQUIRED DEPENDENCIES (specify for {{language}}):
-// [List all required packages/libraries with installation commands]
+**OUTPUT FORMAT:**
+```{{language}}
+// DEPENDENCIES: [List specific NuGet packages, pip packages, or npm modules needed]
+// VERSION COMPATIBILITY: {{product_name}} {{version}}
+// TESTING FRAMEWORK: {{testing_framework}}
 
-// Required imports/using statements for {{language}}
-// [Include ALL necessary imports]
+[COMPLETE IMPORTS/USING STATEMENTS - NO MISSING REFERENCES]
 
-// Test class/module with descriptive name
-// [Complete test implementation with verified method calls only]
+[COMPLETE TEST CLASS WITH ALL REQUIRED ATTRIBUTES]
+[COMPLETE TEST METHOD WITH PROPER SIGNATURE]
+[COMPLETE SETUP CODE - ACTUAL CONFIGURATION VALUES]
+[COMPLETE TEST LOGIC - REAL API CALLS]
+[COMPLETE ASSERTIONS - VALID TEST FRAMEWORK SYNTAX]
+[COMPLETE CLEANUP CODE - PROPER RESOURCE DISPOSAL]
 ```
 
-**VERIFICATION CHECKLIST (Must satisfy ALL):**
-✅ All classes/methods used actually exist in the target SDK/library
-✅ All required imports/using/include statements included
-✅ Proper async/synchronous patterns for the target language
-✅ No assumptions about method behavior without verification
-✅ Proper exception/error handling for the language
-✅ Clear dependency requirements specified with installation instructions
-✅ Type-safe operations with proper null/undefined checking
-✅ Test methods follow language-specific naming conventions
-✅ No direct indexing on collection types that don't support it
-✅ All syntax follows language-specific rules and conventions
-
-**IMPORTANT:** 
-- Prioritize COMPILATION SUCCESS over feature completeness
-- Use conservative, well-documented API calls only
-- Include comprehensive error handling appropriate for the language
-- Test realistic scenarios with proper setup/cleanup using language idioms
-- Focus on behavior verification using only verified APIs from official documentation
-- When in doubt, use simpler, more basic approaches that are guaranteed to compile
+**FINAL VERIFICATION CHECKLIST:**
+- [ ] All types are correctly imported and accessible
+- [ ] All method calls use correct signatures from {{product_name}} {{version}}
+- [ ] All async operations are properly awaited
+- [ ] All test assertions use valid {{testing_framework}} syntax
+- [ ] All string values are properly formatted and escaped
+- [ ] All configuration values are realistic but not hardcoded secrets
+- [ ] Code compiles without warnings or errors
+- [ ] No placeholder comments or TODO items remain

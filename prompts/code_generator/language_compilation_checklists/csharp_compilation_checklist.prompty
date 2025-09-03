@@ -1,0 +1,15 @@
+---
+name: C# Compilation Checklist Sub-Prompt
+description: C#-specific compilation verification checklist for code generation quality assurance
+inputs:
+  language:
+    type: string
+    description: Programming language (should be C# for this checklist)
+---
+
+**C# Compilation Checklist:**
+✅ **Using Statements**: Include all required namespaces (System, Microsoft.Azure.Cosmos, etc.)
+✅ **Async/Await**: Use async/await correctly for all async operations
+✅ **Method Signatures**: Verify parameter count and types match SDK documentation
+✅ **Generic Types**: Use correct type parameters (List<string>, not List)
+✅ **Access Modifiers**: Use only public APIs from the SDK

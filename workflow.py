@@ -3,6 +3,7 @@ import os
 import json
 from datetime import datetime
 from agents import CodeGenerator, DocumentAnalyzer
+from integrations.langsmith import trace_workflow_execution, LangSmithIntegration
 
 
 class AgentWorkflow:
@@ -247,6 +248,7 @@ class AgentWorkflow:
             print(f"❌ Error saving {agent_name} output: {str(e)}")
             return None
     
+    @trace_workflow_execution
     def execute_workflow(self, initial_input: str) -> Dict[str, Any]:
         """Execute the complete workflow with all agents"""
         print("=" * 60)

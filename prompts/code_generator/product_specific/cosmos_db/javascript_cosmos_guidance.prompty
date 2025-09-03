@@ -1,0 +1,40 @@
+---
+name: Cosmos DB JavaScript SDK Guidance
+description: JavaScript/TypeScript specific guidance for Azure Cosmos DB SDK
+authors:
+  - Bug Bash Agent Team
+inputs:
+  version:
+    type: string
+    description: SDK version being targeted
+---
+
+**COSMOS DB JAVASCRIPT/TYPESCRIPT SDK SPECIFIC GUIDANCE:**
+
+**🔧 CORE JAVASCRIPT CONCEPTS:**
+- **CosmosClient**: `new CosmosClient({ endpoint, key })` or `new CosmosClient(connectionString)`
+- **Database**: `client.database("dbName")`
+- **Container**: `database.container("containerName")`
+- **Items**: CRUD operations with partitionKey parameter
+- **Queries**: Use `container.items.query("SELECT * FROM c")` with async iteration
+
+**📋 ESSENTIAL JAVASCRIPT PATTERNS:**
+```javascript
+const { CosmosClient } = require("@azure/cosmos");
+
+// Client initialization
+const client = new CosmosClient(connectionString);
+
+// Database and container
+const database = client.database("TestDB");
+const container = database.container("TestContainer");
+
+// CRUD operations
+const { resource: createdItem } = await container.items.create(item);
+const { resource: readItem } = await container.item(itemId, partitionKeyValue).read();
+```
+
+**⚠️ VERSION-SPECIFIC CONSIDERATIONS:**
+- **Package**: Use `@azure/cosmos` npm package (v3.x or v4.x)
+- **Async/Await**: All operations are async and return promises
+- **Partition Key**: Specify as second parameter in `item(id, partitionKey)`

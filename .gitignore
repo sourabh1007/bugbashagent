@@ -5,22 +5,12 @@ __pycache__/
 *.pyo
 *.pyd
 
-# VS Code temporary and test files (prevent regeneration)
-test_*.py
-debug_*.py
-analyze_*.py
-sample_*.py
-integration_*.py
-quick_*.py
-show_*.py
-*_test.py
-*_new.py
-*_old.py
-*_fixed.py
-*_simple.py
-*_clean.py
-*_demo.py
-test_document.md
+# VS Code cache and temp files
+.vscode/
+*.code-workspace
+.history/
+
+# Temporary files
 *.tmp
 *.temp
 
@@ -30,11 +20,6 @@ docs/
 examples/
 old/
 backup/
-
-# VS Code cache and temp files
-.vscode/
-*.code-workspace
-.history/
 
 # Summary and documentation files that get regenerated
 *_SUMMARY.md

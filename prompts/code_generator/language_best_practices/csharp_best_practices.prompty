@@ -1,0 +1,22 @@
+---
+name: C# Best Practices Sub-Prompt
+description: Language-specific best practices sub-prompt for C# code generation to avoid compilation errors
+inputs:
+  testing_framework:
+    type: string
+    description: The testing framework being used for C#
+---
+
+**C# / .NET Specific Best Practices:**
+1. Include required using statements (System, Microsoft.Azure.Cosmos, etc.)
+2. Use async/await correctly - don't mix sync and async patterns  
+3. Handle nullable reference types properly (use ? for nullable types)
+4. Initialize collections before use: `var list = new List<Type>();`
+5. Properly dispose resources with using statements
+6. Use correct generic type parameters
+7. Use proper access modifiers (public, private, internal, protected)
+
+**{{testing_framework}} Framework Guidelines:**
+- NUnit: Use [TestFixture], [Test], [SetUp], [TearDown], Assert.That() syntax
+- MSTest: Use [TestClass], [TestMethod], [TestInitialize], [TestCleanup], Assert.AreEqual() syntax  
+- xUnit: Use [Fact], [Theory], constructor/IDisposable, Assert.Equal() syntax

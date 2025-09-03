@@ -1,0 +1,40 @@
+---
+name: Cosmos DB Python SDK Guidance
+description: Python specific guidance for Azure Cosmos DB SDK
+authors:
+  - Bug Bash Agent Team
+inputs:
+  version:
+    type: string
+    description: SDK version being targeted
+---
+
+**COSMOS DB PYTHON SDK SPECIFIC GUIDANCE:**
+
+**🔧 CORE PYTHON CONCEPTS:**
+- **CosmosClient**: `CosmosClient(url, credential)` or `CosmosClient.from_connection_string(conn_str)`
+- **Database**: `client.get_database_client("dbName")`
+- **Container**: `database.get_container_client("containerName")`
+- **Items**: CRUD operations with partition_key parameter
+- **Queries**: Use `container.query_items("SELECT * FROM c", enable_cross_partition_query=True)`
+
+**📋 ESSENTIAL PYTHON PATTERNS:**
+```python
+from azure.cosmos import CosmosClient, PartitionKey, exceptions
+
+# Client initialization
+client = CosmosClient.from_connection_string(connection_string)
+
+# Database and container
+database = client.get_database_client("TestDB")
+container = database.get_container_client("TestContainer")
+
+# CRUD operations
+response = container.create_item(body=item)
+response = container.read_item(item=item_id, partition_key=partition_key_value)
+```
+
+**⚠️ VERSION-SPECIFIC CONSIDERATIONS:**
+- **SDK Version**: Use `azure-cosmos` package (v4.x recommended)
+- **Partition Key**: Always specify for single-item operations
+- **Exception Handling**: Catch `exceptions.CosmosHttpResponseError`

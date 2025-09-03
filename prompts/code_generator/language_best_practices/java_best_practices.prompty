@@ -1,0 +1,22 @@
+---
+name: Java Best Practices Sub-Prompt
+description: Language-specific best practices sub-prompt for Java code generation to avoid compilation errors
+inputs:
+  testing_framework:
+    type: string
+    description: The testing framework being used for Java
+---
+
+**Java Specific Best Practices:**
+1. Include proper import statements
+2. Use try-catch for exception handling
+3. Initialize collections: `List<String> list = new ArrayList<>();`
+4. Use proper access modifiers (public, private, protected)
+5. Check for null: `if (object != null)`
+6. Use proper package declarations and class structure
+7. Follow naming conventions (camelCase, PascalCase for classes)
+
+**{{testing_framework}} Framework Guidelines:**
+- JUnit 5: Use @Test, assertEquals(), @BeforeEach/@AfterEach
+- JUnit 4: Use @Test, Assert.assertEquals(), @Before/@After
+- TestNG: Use @Test, Assert.assertEquals(), @BeforeMethod/@AfterMethod

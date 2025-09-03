@@ -1,0 +1,59 @@
+---
+name: Cosmos DB SDK Guidance
+description: General product-specific guidance for Azure Cosmos DB SDK (language-specific patterns in separate files)
+authors:
+  - Bug Bash Agent Team
+inputs:
+  language:
+    type: string
+    description: Programming language being used
+  version:
+    type: string
+    description: SDK version being targeted
+---
+
+**COSMOS DB SDK GENERAL GUIDANCE:**
+
+**🔧 CORE CONCEPTS TO VERIFY:**
+- **CosmosClient**: Main entry point - verify constructor parameters for your language/version
+- **Database/Container**: Reference patterns - check if they return objects or require await
+- **Items/Documents**: CRUD operations - verify exact method names per language
+- **Query Operations**: SQL query syntax and execution patterns specific to SDK version
+- **Partition Keys**: How to specify and use partition keys correctly in your language
+
+**📋 LANGUAGE-SPECIFIC PATTERNS:**
+⚠️ **Note**: Detailed language-specific patterns are available in separate guidance files:
+- **C#**: See language-specific C# Cosmos DB guidance for detailed patterns
+- **Python**: See language-specific Python Cosmos DB guidance for detailed patterns  
+- **JavaScript**: See language-specific JavaScript Cosmos DB guidance for detailed patterns
+- **Java**: See language-specific Java Cosmos DB guidance for detailed patterns
+- **Go**: See language-specific Go Cosmos DB guidance for detailed patterns
+- **Rust**: See language-specific Rust Cosmos DB guidance for detailed patterns
+
+**⚠️ VERSION-SPECIFIC CONSIDERATIONS:**
+- **V3 vs V4**: Method naming conventions changed (Async suffix handling)
+- **Connection Patterns**: Some versions use connection strings, others use endpoint + key
+- **Async Patterns**: Verify if operations are synchronous or asynchronous in your version
+- **Exception Types**: Different SDK versions may throw different exception types
+
+**🎯 COSMOS DB TESTING SCENARIOS TO FOCUS ON:**
+- **Connection Setup**: Client initialization with proper credentials
+- **Database/Container Creation**: Using CreateIfNotExists patterns
+- **CRUD Operations**: Create, Read, Update, Delete with proper partition key handling
+- **Query Operations**: SQL queries with parameterization
+- **Batch Operations**: Bulk operations where supported
+- **Error Handling**: Connection timeouts, throttling (429), not found (404)
+
+**🚨 COMMON COSMOS DB COMPILATION ERRORS TO AVOID:**
+❌ **Wrong Method Names**: Language-specific method naming varies significantly
+❌ **Missing Partition Key**: Forgetting to specify partition key in operations
+❌ **Incorrect Async Patterns**: Missing await, wrong Task handling
+❌ **Wrong Exception Types**: Catching generic exceptions instead of product-specific ones
+❌ **Invalid Connection**: Wrong connection string format or missing credentials
+
+✅ **VERIFIED PATTERNS TO USE:**
+✅ Always specify partition key for single-item operations
+✅ Use proper async/await patterns for the language and SDK version
+✅ Handle product-specific exceptions for error scenarios
+✅ Use CreateIfNotExists for database/container setup in tests
+✅ Include proper using/import statements for Cosmos SDK

@@ -1,0 +1,15 @@
+---
+name: Go Compilation Checklist Sub-Prompt
+description: Go-specific compilation verification checklist for code generation quality assurance
+inputs:
+  language:
+    type: string
+    description: Programming language (should be Go for this checklist)
+---
+
+**Go Compilation Checklist:**
+✅ **Package/Import**: Include proper package and import declarations
+✅ **Error Handling**: Check every error return value
+✅ **Nil Checks**: Check for nil before dereferencing
+✅ **Variable Declaration**: Use proper var/short declaration syntax
+✅ **Collection Init**: Initialize slices/maps with make()

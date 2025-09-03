@@ -1,0 +1,15 @@
+---
+name: Python Compilation Checklist Sub-Prompt
+description: Python-specific compilation verification checklist for code generation quality assurance
+inputs:
+  language:
+    type: string
+    description: Programming language (should be Python for this checklist)
+---
+
+**Python Compilation Checklist:**
+✅ **Import Statements**: Include all necessary imports (azure.cosmos, json, etc.)
+✅ **Indentation**: Use proper indentation (4 spaces consistently)
+✅ **Type Hints**: Use type hints where appropriate
+✅ **Exception Handling**: Use try-except blocks for error handling
+✅ **Variable Initialization**: Initialize variables before use

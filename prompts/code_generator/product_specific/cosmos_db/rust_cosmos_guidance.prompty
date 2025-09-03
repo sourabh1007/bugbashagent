@@ -1,0 +1,126 @@
+---
+name: Cosmos DB Rust SDK Guidance
+description: Rust specific guidance for Azure Cosmos DB SDK
+authors:
+  - Bug Bash Agent Team
+inputs:
+  version:
+    type: string
+    description: SDK version being targeted
+---
+
+**COSMOS DB RUST SDK SPECIFIC GUIDANCE:**
+
+**🔧 CORE RUST CONCEPTS:**
+- **Client**: Use `CosmosClient::new()` with endpoint and authorization token
+- **Database**: Operations through client with database name
+- **Container**: Operations through client with database and container names  
+- **Items**: CRUD operations with partition key handling and Result types
+- **Queries**: Use client query methods with SQL strings
+
+**📋 ESSENTIAL RUST PATTERNS:**
+```rust
+use azure_cosmos::{CosmosClient, AuthorizationToken, PartitionKey};
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Clone)]
+struct MyItem {
+    id: String,
+}
+
+// Client initialization
+let auth_token = AuthorizationToken::primary_key(&cosmos_key)?;
+let client = CosmosClient::new(cosmos_endpoint, auth_token);
+
+// CRUD operations
+let result = client
+    .database_client(&database_name)
+    .collection_client(&collection_name)
+    .document_client(&item_id, &partition_key)
+    .get_document::<MyItem>()
+    .await?;
+```
+
+**⚠️ VERSION-SPECIFIC CONSIDERATIONS:**
+- **Crate**: Use `azure_cosmos` crate from crates.io
+- **Error Handling**: Handle Result types with ? operator or match
+- **Async**: Most operations are async and require .await
+}
+
+// Client initialization
+let auth_token = AuthorizationToken::primary_key(&cosmos_key)?;
+let client = CosmosClient::new(cosmos_endpoint, auth_token);
+
+// Database operations
+let database = client.database("TestDB");
+let db_response = database.create().await?;
+
+// Container operations
+let container = database.container("TestContainer");
+let container_response = container
+    .create()
+    .partition_key("/id")
+    .await?;
+
+// Create item
+let partition_key = PartitionKey::from(&item.id);
+let create_response = container
+    .create_item(&item)
+    .partition_key(&partition_key)
+    .await?;
+
+// Read item
+let read_response = container
+    .get_item::<MyItem>(&item_id)
+    .partition_key(&partition_key)
+    .await?;
+
+// Query items
+let query = "SELECT * FROM c WHERE c.status = 'active'";
+let query_response = container
+    .query_items::<MyItem>(query)
+    .await?;
+
+for item in query_response.items {
+    // Process items
+}
+
+// Replace item
+let replace_response = container
+    .replace_item(&updated_item)
+    .partition_key(&partition_key)
+    .await?;
+
+// Delete item
+let delete_response = container
+    .delete_item(&item_id)
+    .partition_key(&partition_key)
+    .await?;
+```
+
+**⚠️ RUST VERSION-SPECIFIC CONSIDERATIONS:**
+- **Crate**: Use `azure_cosmos` crate from crates.io
+- **Async/Await**: All operations are async and return Results
+- **Error Handling**: Use `?` operator or explicit Result handling
+- **Serde**: Use serde for serialization/deserialization of items
+
+**🚨 RUST COMPILATION ERRORS TO AVOID:**
+❌ **Missing Crate**: Not including `azure_cosmos` in Cargo.toml
+❌ **Missing Await**: Async operations without `.await?`
+❌ **Missing Error Handling**: Not handling Result types properly
+❌ **Missing Serde**: Not deriving Serialize/Deserialize for item structs
+❌ **Incorrect Partition Key**: Not using PartitionKey::from() correctly
+
+**✅ RUST VERIFIED PATTERNS:**
+✅ Include `azure_cosmos` crate in Cargo.toml
+✅ Use `.await?` for async operations
+✅ Handle Result types with `?` operator or match
+✅ Derive `Serialize, Deserialize` for item structs
+✅ Use `PartitionKey::from()` for partition key creation
+
+**🎯 RUST TESTING FOCUS:**
+- Client initialization with AuthorizationToken
+- Database/Container creation with builder pattern
+- CRUD operations with proper Result handling
+- Query operations with type annotations
+- Comprehensive error handling with Result types

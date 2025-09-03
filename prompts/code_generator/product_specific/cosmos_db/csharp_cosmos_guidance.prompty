@@ -1,0 +1,50 @@
+---
+name: Cosmos DB C# SDK Guidance
+description: C# specific guidance for Azure Cosmos DB SDK
+authors:
+  - Bug Bash Agent Team
+inputs:
+  version:
+    type: string
+    description: SDK version being targeted
+---
+
+**COSMOS DB C# (.NET) SDK SPECIFIC GUIDANCE:**
+
+**🔧 CORE C# CONCEPTS:**
+- **CosmosClient**: Main entry point - `new CosmosClient(connectionString)` or `new CosmosClient(endpoint, key)`
+- **Database**: `client.GetDatabase("dbName")` 
+- **Container**: `database.GetContainer("containerName")`
+
+**⚠️ COSMOS DB V3 SDK SPECIFICS:**
+- Always use async/await with Cosmos operations
+- Include `new PartitionKey(value)` for single-item operations
+- Catch `CosmosException` for Cosmos-specific errors
+- Import `using Microsoft.Azure.Cosmos;`
+
+**🚨 COMMON V3 SDK ERRORS TO AVOID:**
+❌ **Missing Async/Await**: `container.CreateItemAsync(item)` without await
+❌ **Missing PartitionKey**: `ReadItemAsync(id)` without partition key parameter  
+❌ **Wrong Exception Type**: Catching `Exception` instead of `CosmosException`
+❌ **Missing Using**: Not importing `Microsoft.Azure.Cosmos`
+
+**✅ CLIENT INITIALIZATION PATTERN (for client initialization scenarios):**
+```csharp
+[Test]
+public async Task CosmosClient_WithValidCredentials_ShouldInitializeSuccessfully()
+{
+    // Arrange
+    string endpoint = "https://localhost:8081";
+    string key = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==";
+    
+    // Act
+    var client = new CosmosClient(endpoint, key);
+    var accountProperties = await client.ReadAccountAsync();
+    
+    // Assert
+    Assert.That(client, Is.Not.Null);
+    Assert.That(accountProperties.Resource.Id, Is.Not.Null.And.Not.Empty);
+}
+```
+
+

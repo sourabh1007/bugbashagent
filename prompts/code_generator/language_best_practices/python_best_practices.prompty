@@ -1,0 +1,22 @@
+---
+name: Python Best Practices Sub-Prompt
+description: Language-specific best practices sub-prompt for Python code generation to avoid runtime errors
+inputs:
+  testing_framework:
+    type: string
+    description: The testing framework being used for Python
+---
+
+**Python Specific Best Practices:**
+1. Include all necessary imports (azure.cosmos, typing, etc.)
+2. Use proper indentation (4 spaces)
+3. Handle exceptions with try-except blocks
+4. Use type hints: `def func(param: str) -> int:`
+5. Initialize variables before use
+6. Handle None values explicitly with `if variable is not None:`
+7. Follow PEP 8 naming conventions (snake_case)
+
+**{{testing_framework}} Framework Guidelines:**
+- unittest: Inherit from unittest.TestCase, use self.assertEqual(), setUp()/tearDown()
+- pytest: Use test_* function names, assert statements, fixtures
+- nose: Similar to unittest but with @nose decorators

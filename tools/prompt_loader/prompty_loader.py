@@ -10,6 +10,7 @@ import re
 from typing import Dict, Any, Optional
 from pathlib import Path
 from langchain.prompts import PromptTemplate
+from langchain_core.language_models import BaseLanguageModel
 
 
 class PromptyLoader:
@@ -112,6 +113,75 @@ class PromptyLoader:
             template=content,
             template_format="jinja2"
         )
+    
+    def create_llm_with_prompty_settings(self, base_llm: BaseLanguageModel, 
+                                       agent_name: str, prompt_name: str) -> BaseLanguageModel:
+        """
+        Create an LLM with prompty-specific settings, falling back to base_llm settings
+        
+        Args:
+            base_llm: The base LLM to use as fallback
+            agent_name: Name of the agent
+            prompt_name: Name of the prompt file
+            
+        Returns:
+            LLM configured with prompty-specific parameters or base_llm if no specific settings
+        """
+        try:
+            metadata = self.get_prompt_metadata(agent_name, prompt_name)
+            
+            # Check if prompty has model parameters
+            if "model" not in metadata or "parameters" not in metadata["model"]:
+                return base_llm
+            
+            prompty_params = metadata["model"]["parameters"]
+            
+            # Extract relevant parameters
+            llm_kwargs = {}
+            if "temperature" in prompty_params:
+                llm_kwargs["temperature"] = prompty_params["temperature"]
+            if "max_tokens" in prompty_params:
+                llm_kwargs["max_tokens"] = prompty_params["max_tokens"]
+            
+            # If no relevant parameters found, return base LLM
+            if not llm_kwargs:
+                return base_llm
+            
+            # Create a copy of the base LLM with updated parameters
+            # Prefer using model_dump (Pydantic v2) to preserve provider-specific fields
+            try:
+                if hasattr(base_llm, "model_dump") and callable(getattr(base_llm, "model_dump")):
+                    current_params = base_llm.model_dump(exclude_none=True)
+                else:
+                    # Fallback: copy a conservative set of common attributes
+                    attrs_to_copy = [
+                        'temperature', 'max_tokens', 'model_name', 'deployment_name', 'openai_api_key',
+                        # Azure OpenAI specific
+                        'azure_endpoint', 'azure_deployment', 'api_key', 'api_version'
+                    ]
+                    current_params = {}
+                    for attr in attrs_to_copy:
+                        if hasattr(base_llm, attr):
+                            current_params[attr] = getattr(base_llm, attr)
+
+                # Ensure Azure-specific required fields are preserved when present on the base LLM
+                for required_attr in ['azure_endpoint', 'azure_deployment', 'api_key', 'api_version']:
+                    if required_attr not in current_params and hasattr(base_llm, required_attr):
+                        current_params[required_attr] = getattr(base_llm, required_attr)
+
+                # Update with prompty parameters (e.g., temperature, max_tokens)
+                current_params.update(llm_kwargs)
+
+                # Create new LLM instance with updated parameters
+                return base_llm.__class__(**current_params)
+            except Exception:
+                # Fallback to base LLM if we can't create a new instance
+                return base_llm
+                
+        except Exception as e:
+            # If anything goes wrong, fallback to base LLM
+            print(f"Warning: Could not apply prompty settings for {agent_name}/{prompt_name}: {e}")
+            return base_llm
     
     def get_prompt_metadata(self, agent_name: str, prompt_name: str) -> Dict[str, Any]:
         """
@@ -222,3 +292,21 @@ def load_prompt_template(agent_name: str, prompt_name: str,
     """
     loader = PromptyLoader(prompts_base_path)
     return loader.create_prompt_template(agent_name, prompt_name)
+
+
+def create_llm_with_prompty_settings(base_llm: BaseLanguageModel, agent_name: str, 
+                                    prompt_name: str, prompts_base_path: str = None) -> BaseLanguageModel:
+    """
+    Quick function to create an LLM with prompty-specific settings
+    
+    Args:
+        base_llm: The base LLM to use as fallback
+        agent_name: Name of the agent
+        prompt_name: Name of the prompt file
+        prompts_base_path: Base path for prompts directory
+        
+    Returns:
+        LLM configured with prompty-specific parameters or base_llm if no specific settings
+    """
+    loader = PromptyLoader(prompts_base_path)
+    return loader.create_llm_with_prompty_settings(base_llm, agent_name, prompt_name)

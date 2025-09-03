@@ -3,9 +3,10 @@ import json
 import os
 from datetime import datetime
 from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
+from langchain_core.output_parsers import StrOutputParser
 from .base_agent import BaseAgent
 from tools.prompt_loader import PromptyLoader
+from integrations.langsmith import trace_agent_execution
 
 
 class DocumentAnalyzer(BaseAgent):
@@ -61,8 +62,14 @@ class DocumentAnalyzer(BaseAgent):
         self.prompt_template = self.prompty_loader.create_prompt_template(
             "document_analyzer", "scenario_extraction"
         )
-        self.chain = LLMChain(llm=self.llm, prompt=self.prompt_template)
+        # Get LLM with prompty-specific settings
+        llm_for_chain = self.prompty_loader.create_llm_with_prompty_settings(
+            self.llm, "document_analyzer", "scenario_extraction"
+        )
+        # Build Runnable pipeline instead of deprecated LLMChain
+        self._runnable = self.prompt_template | llm_for_chain | StrOutputParser()
     
+    @trace_agent_execution("Document Analyzer")
     def execute(self, input_data: str) -> Dict[str, Any]:
         """Analyze the document content and generate unlimited unique scenarios with duplicate detection"""
         self.log("Starting document analysis with unlimited scenario generation and duplicate prevention")
@@ -79,16 +86,16 @@ class DocumentAnalyzer(BaseAgent):
                 "document_scenario_extraction"
             )
             
-            analysis_result = self.chain.invoke({"document_content": input_data})
+            analysis_result = self._runnable.invoke({"document_content": input_data})
             
             # Try to parse the JSON response
             try:
-                parsed_result = json.loads(analysis_result["text"].strip())
+                parsed_result = json.loads(analysis_result.strip())
                 self.log("Successfully parsed LLM response as JSON")
             except json.JSONDecodeError as e:
                 # If JSON parsing fails, log the error and re-raise
                 self.log(f"Failed to parse JSON from LLM response: {str(e)}")
-                self.log(f"Raw LLM response: {analysis_result['text']}")
+                self.log(f"Raw LLM response: {analysis_result}")
                 raise ValueError(f"Invalid JSON response from LLM: {str(e)}")
             
             # Store original count before validation

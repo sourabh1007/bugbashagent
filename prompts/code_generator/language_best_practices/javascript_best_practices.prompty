@@ -1,0 +1,22 @@
+---
+name: JavaScript Best Practices Sub-Prompt
+description: Language-specific best practices sub-prompt for JavaScript/TypeScript code generation to avoid runtime errors
+inputs:
+  testing_framework:
+    type: string
+    description: The testing framework being used for JavaScript/TypeScript
+---
+
+**JavaScript/TypeScript Specific Best Practices:**
+1. Declare variables with const/let (avoid var)
+2. Use try-catch for error handling
+3. Handle async operations with async/await
+4. Check for undefined/null: `if (value !== null && value !== undefined)`
+5. Use proper import/export syntax
+6. Initialize arrays/objects: `const array = [];`
+7. Use strict equality (===) not loose equality (==)
+
+**{{testing_framework}} Framework Guidelines:**
+- Jest: Use describe(), it(), expect().toBe()
+- Mocha: Use describe(), it() with assertion library (chai)
+- Jasmine: Use describe(), it(), expect().toEqual()

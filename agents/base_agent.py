@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict
 import os
 from datetime import datetime
+from integrations.langsmith import trace_agent_execution
 
 
 class BaseAgent(ABC):

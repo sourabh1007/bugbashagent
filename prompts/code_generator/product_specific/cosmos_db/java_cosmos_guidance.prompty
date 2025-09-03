@@ -1,0 +1,45 @@
+---
+name: Cosmos DB Java SDK Guidance
+description: Java specific guidance for Azure Cosmos DB SDK
+authors:
+  - Bug Bash Agent Team
+inputs:
+  version:
+    type: string
+    description: SDK version being targeted
+---
+
+**COSMOS DB JAVA SDK SPECIFIC GUIDANCE:**
+
+**🔧 CORE JAVA CONCEPTS:**
+- **CosmosClient**: Created via `CosmosClientBuilder` with endpoint and key
+- **CosmosDatabase**: `client.getDatabase("dbName")`
+- **CosmosContainer**: `database.getContainer("containerName")`
+- **Items**: CRUD operations with PartitionKey class
+- **Queries**: Use `container.queryItems("SELECT * FROM c", CosmosQueryRequestOptions, ItemClass.class)`
+
+**📋 ESSENTIAL JAVA PATTERNS:**
+```java
+import com.azure.cosmos.*;
+import com.azure.cosmos.models.*;
+
+// Client initialization
+CosmosClient client = new CosmosClientBuilder()
+    .endpoint(endpoint)
+    .key(key)
+    .buildClient();
+
+// Database and container
+CosmosDatabase database = client.getDatabase("TestDB");
+CosmosContainer container = database.getContainer("TestContainer");
+
+// CRUD operations
+CosmosItemResponse<MyItem> createResponse = container.createItem(item);
+CosmosItemResponse<MyItem> readResponse = container.readItem(
+    itemId, new PartitionKey(partitionKeyValue), MyItem.class);
+```
+
+**⚠️ VERSION-SPECIFIC CONSIDERATIONS:**
+- **SDK Version**: Use `azure-cosmos` Maven dependency (v4.x recommended)
+- **Builder Pattern**: Use `CosmosClientBuilder` for client creation
+- **Partition Key**: Use `new PartitionKey(value)` for operations
