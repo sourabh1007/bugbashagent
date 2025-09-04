@@ -7,7 +7,7 @@ import time
 from datetime import datetime
 import jinja2
 from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
+from langchain_core.output_parsers import StrOutputParser
 from .base_agent import BaseAgent
 from integrations.langsmith import trace_agent_execution
 
@@ -355,7 +355,7 @@ class CodeGenerator(BaseAgent):
                 # FIRST ATTEMPT: Generate all code based on document analyzer scenarios
                 self.log(f"🚀 First attempt: Generating all scenarios from document analysis ({len(scenarios)} scenarios)")
                 scenario_results = self._generate_scenarios_individually(
-                    scenarios, language, product_name, version, setup_info, project_dir, analysis_data
+                    scenarios, language, product_name, version, setup_info, project_dir, analysis_data, attempt=1
                 )
                 
                 # Consolidate all generated code
@@ -387,7 +387,7 @@ class CodeGenerator(BaseAgent):
                     # Only regenerate the problematic scenarios, keep others unchanged
                     updated_scenario_results = self._regenerate_only_failed_scenarios(
                         scenarios_with_errors, scenario_results, language, 
-                        product_name, version, setup_info, project_dir, analysis_data, compilation_result
+                        product_name, version, setup_info, project_dir, analysis_data, compilation_result, attempt
                     )
                     
                     # Update only the files for scenarios that were regenerated
@@ -490,7 +490,7 @@ class CodeGenerator(BaseAgent):
         
         return final_result
     
-    def _generate_scenarios_individually(self, scenarios: list, language: str, product_name: str, version: str, setup_info: dict, project_dir: str, analysis_data: dict) -> Dict[str, Any]:
+    def _generate_scenarios_individually(self, scenarios: list, language: str, product_name: str, version: str, setup_info: dict, project_dir: str, analysis_data: dict, attempt: int = 1) -> Dict[str, Any]:
         """Generate code for each scenario individually with progress tracking"""
         results = {
             "successful": [],
@@ -499,7 +499,7 @@ class CodeGenerator(BaseAgent):
             "generation_details": []
         }
         
-        self.log(f"🔄 Processing {len(scenarios)} scenarios individually...")
+        self.log(f"🔄 Processing {len(scenarios)} scenarios individually (Attempt {attempt} - {'Initial Code Generation' if attempt == 1 else 'Error Fixing'})...")
         
         # Get context for prompt generation
         detected_dependencies = PackageVersions.detect_dependencies_from_scenario(analysis_data)
@@ -558,12 +558,12 @@ class CodeGenerator(BaseAgent):
                 "code_generator", "scenario_generation"
             )
         
-        chain = LLMChain(llm=llm_for_chain, prompt=prompt_template)
+        chain = prompt_template | llm_for_chain | StrOutputParser()
         
         # Process each scenario individually
         for i, scenario in enumerate(scenarios, 1):
             try:
-                self.log(f"📝 Processing scenario {i}/{len(scenarios)}: {self._get_scenario_name(scenario)}")
+                self.log(f"📝 [Attempt {attempt}] {'🆕 Generating' if attempt == 1 else '🔧 Fixing'} scenario {i}/{len(scenarios)}: {self._get_scenario_name(scenario)}")
                 
                 # Format single scenario for prompt
                 scenario_text = self._format_single_scenario_for_prompt(scenario, i)
@@ -604,8 +604,7 @@ class CodeGenerator(BaseAgent):
                 )
                 
                 # Generate code for this specific scenario
-                scenario_result = chain.invoke(prompt_vars)
-                generated_content = scenario_result["text"]
+                generated_content = chain.invoke(prompt_vars)
                 
                 # Extract and save individual code files for this scenario
                 scenario_files = self._extract_scenario_code_files(
@@ -626,7 +625,7 @@ class CodeGenerator(BaseAgent):
                 results["generation_details"].append(scenario_detail)
                 
                 files_count = len(scenario_files)
-                self.log(f"✅ Scenario {i} completed successfully ({files_count} code files created)")
+                self.log(f"✅ [Attempt {attempt}] Scenario {i} completed successfully ({files_count} code files created)")
                 
                 # Small delay between scenarios to avoid overwhelming the LLM
                 time.sleep(0.5)
@@ -642,7 +641,7 @@ class CodeGenerator(BaseAgent):
                 results["failed"].append(error_detail)
                 results["generation_details"].append(error_detail)
                 
-                self.log(f"❌ Scenario {i} failed: {str(e)}")
+                self.log(f"❌ [Attempt {attempt}] Scenario {i} failed: {str(e)}")
             
             results["total_processed"] += 1
         
@@ -650,7 +649,7 @@ class CodeGenerator(BaseAgent):
         success_count = len(results["successful"])
         failure_count = len(results["failed"])
         
-        self.log(f"🎯 Scenario Generation Summary:")
+        self.log(f"🎯 [Attempt {attempt}] Scenario Generation Summary:")
         self.log(f"  ✅ Successful: {success_count}/{len(scenarios)}")
         self.log(f"  ❌ Failed: {failure_count}/{len(scenarios)}")
         self.log(f"  📊 Success Rate: {(success_count/len(scenarios)*100):.1f}%")
@@ -3195,7 +3194,7 @@ class {class_name}Test {{
                                         original_scenario_results: Dict[str, Any], language: str, 
                                         product_name: str, version: str, setup_info: dict, 
                                         project_dir: str, analysis_data: dict, 
-                                        compilation_result: Dict[str, Any]) -> Dict[str, Any]:
+                                        compilation_result: Dict[str, Any], attempt: int = 2) -> Dict[str, Any]:
         """Regenerate ONLY the scenarios that had compilation errors"""
         
         updated_results = {
@@ -3206,7 +3205,7 @@ class {class_name}Test {{
             "selective_fixes": []
         }
         
-        self.log(f"🎯 Regenerating only {len(scenarios_with_errors)} scenarios with errors (keeping {len(original_scenario_results.get('successful', []))} working scenarios unchanged)")
+        self.log(f"🎯 [Attempt {attempt}] Regenerating only {len(scenarios_with_errors)} scenarios with errors (keeping {len(original_scenario_results.get('successful', []))} working scenarios unchanged)")
         
         # Process only scenarios that had compilation errors
         for scenario_error_info in scenarios_with_errors:
@@ -3218,7 +3217,7 @@ class {class_name}Test {{
                 self.log(f"⚠️ Could not find original scenario data for {scenario_name}, skipping...")
                 continue
             
-            self.log(f"🛠️ Regenerating ONLY scenario with errors: {scenario_name} (index {scenario_index})")
+            self.log(f"🛠️ [Attempt {attempt}] 🔧 Fixing scenario with errors: {scenario_name} (index {scenario_index})")
             
             # Enhance this specific scenario with its specific error context
             enhanced_scenario = self._enhance_single_scenario_with_specific_errors(
@@ -3248,7 +3247,7 @@ class {class_name}Test {{
                 # Generate the fixed code for this scenario
                 scenario_result = self._generate_single_scenario_with_error_context(
                     enhanced_scenario, scenario_index + 1, language, product_name, version, 
-                    setup_info, analysis_data, context
+                    setup_info, analysis_data, context, attempt
                 )
                 
                 if scenario_result:
@@ -3275,7 +3274,7 @@ class {class_name}Test {{
                         "errors_addressed": len(scenario_error_info["errors"]),
                         "fix_status": "success"
                     })
-                    self.log(f"✅ Successfully regenerated scenario: {scenario_name}")
+                    self.log(f"✅ [Attempt {attempt}] Successfully regenerated scenario: {scenario_name} (fixed {len(scenario_error_info['errors'])} errors)")
                 else:
                     updated_results["failed"].append({
                         "scenario_index": scenario_index + 1,
@@ -3283,10 +3282,10 @@ class {class_name}Test {{
                         "error": "Failed to generate fixed code",
                         "original_errors": scenario_error_info["errors"]
                     })
-                    self.log(f"❌ Failed to regenerate scenario: {scenario_name}")
+                    self.log(f"❌ [Attempt {attempt}] Failed to regenerate scenario: {scenario_name}")
                         
             except Exception as e:
-                self.log(f"❌ Error regenerating scenario {scenario_name}: {str(e)}")
+                self.log(f"❌ [Attempt {attempt}] Error regenerating scenario {scenario_name}: {str(e)}")
                 updated_results["failed"].append({
                     "scenario_index": scenario_index + 1,
                     "scenario_name": scenario_name,
@@ -3645,8 +3644,11 @@ class {class_name}Test {{
 
     def _generate_single_scenario_with_error_context(self, enhanced_scenario: Any, scenario_index: int, 
                                                    language: str, product_name: str, version: str, 
-                                                   setup_info: dict, analysis_data: dict, context: dict) -> str:
+                                                   setup_info: dict, analysis_data: dict, context: dict, attempt: int = 2) -> str:
         """Generate code for a single scenario with compilation error context"""
+        
+        scenario_name = enhanced_scenario.get("scenario_name", "Unknown") if isinstance(enhanced_scenario, dict) else "Unknown"
+        self.log(f"🔧 [Attempt {attempt}] Fixing errors in scenario: {scenario_name} (Scenario {scenario_index})")
         
         # Get single-scenario prompt template with error fixing context
         # Load error fix regeneration prompt from prompty file for failed scenarios
@@ -3663,7 +3665,7 @@ class {class_name}Test {{
             self.llm, "code_generator", "error_fix_regeneration"
         )
         
-        chain = LLMChain(llm=llm_for_chain, prompt=prompt_template)
+        chain = prompt_template | llm_for_chain | StrOutputParser()
         
         # Format scenario for prompt (this will include error context)
         scenario_text = self._format_single_scenario_for_prompt(enhanced_scenario, scenario_index)
@@ -3688,7 +3690,8 @@ class {class_name}Test {{
             "scenario": scenario_text,
             "setup_info": setup_info_text,
             "scenario_index": scenario_index,
-            "total_scenarios": 1  # Since we're only regenerating one scenario
+            "total_scenarios": 1,  # Since we're only regenerating one scenario
+            "error_context": self._extract_error_context_for_prompt(enhanced_scenario)
         }
         
         # Log the actual prompt that will be sent to LLM for error fixing
@@ -3703,8 +3706,43 @@ class {class_name}Test {{
         )
         
         # Generate code for this specific scenario with error fixes
-        scenario_result = chain.invoke(prompt_vars)
-        return scenario_result["text"]
+        return chain.invoke(prompt_vars)
+
+    def _extract_error_context_for_prompt(self, enhanced_scenario: Any) -> str:
+        """Extract error context from enhanced scenario for the prompt template"""
+        if not isinstance(enhanced_scenario, dict):
+            return "No specific error context available"
+        
+        compilation_context = enhanced_scenario.get("compilation_context", {})
+        if not compilation_context:
+            return "No compilation errors detected"
+        
+        # Format error context for the prompt
+        error_parts = []
+        
+        # Add error summary
+        error_summary = compilation_context.get("error_summary", "")
+        if error_summary:
+            error_parts.append(f"ERROR SUMMARY:\n{error_summary}")
+        
+        # Add specific error messages
+        raw_errors = compilation_context.get("scenario_specific_errors", [])
+        if raw_errors:
+            error_parts.append("COMPILATION ERRORS:")
+            for i, error in enumerate(raw_errors, 1):
+                error_parts.append(f"{i}. {error}")
+        
+        # Add fix instructions
+        fix_instructions = compilation_context.get("fix_instructions", "")
+        if fix_instructions:
+            error_parts.append(f"FIX INSTRUCTIONS:\n{fix_instructions}")
+        
+        # Add specific code fixes
+        specific_fixes = compilation_context.get("specific_code_fixes", "")
+        if specific_fixes:
+            error_parts.append(f"SPECIFIC CODE FIXES:\n{specific_fixes}")
+        
+        return "\n\n".join(error_parts) if error_parts else "No specific error context available"
 
     def _identify_files_with_compilation_errors(self, compilation_result: Dict[str, Any], 
                                               project_dir: str, language: str) -> List[Dict[str, Any]]:
@@ -4091,7 +4129,7 @@ class {class_name}Test {{
                 self.llm, "code_generator", "scenario_generation"
             )
             
-            chain = LLMChain(llm=llm_for_chain, prompt=prompt_template)
+            chain = prompt_template | llm_for_chain | StrOutputParser()
 
             # Format scenario for prompt
             formatted_scenario = self._format_single_scenario_for_prompt(scenario, 1)
@@ -4130,8 +4168,7 @@ class {class_name}Test {{
             )
             
             # Generate code
-            scenario_result = chain.invoke(prompt_vars)
-            generated = scenario_result.get("text") if isinstance(scenario_result, dict) else scenario_result
+            generated = chain.invoke(prompt_vars)
 
             if generated and isinstance(generated, str) and generated.strip():
                 # Extract code from result if needed

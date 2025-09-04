@@ -11,8 +11,7 @@ model:
     api_version: ${AZURE_OPENAI_API_VERSION}
     azure_endpoint: ${AZURE_OPENAI_ENDPOINT}
   parameters:
-    temperature: 0.5
-    max_tokens: 6000
+    # All parameters now read from environment variables
 inputs:
   language:
     type: string

@@ -27,7 +27,7 @@ class AzureOpenAIClient:
         model_name: Optional[str] = None,
         temperature: float = 0.7,
         max_tokens: int = 8000,
-    ):
+    ) -> None:
         """Initialize Azure OpenAI client.
 
         Args:
@@ -86,7 +86,7 @@ class AzureOpenAIClient:
             "api_version": self.api_version,
             "azure_deployment": self.deployment_name,
             "temperature": self.temperature,
-            "max_tokens": self.max_tokens,
+            "model_kwargs": {"max_completion_tokens": self.max_tokens},
         }
         # Include model name if provided (ignored by Azure if azure_deployment used, but safe)
         if self.model_name:

@@ -87,16 +87,16 @@ class DocumentAnalyzer(BaseAgent):
             )
             
             analysis_result = self._runnable.invoke({"document_content": input_data})
-            
-            # Try to parse the JSON response
-            try:
-                parsed_result = json.loads(analysis_result.strip())
+
+            # Try to parse the JSON response with recovery strategies
+            parsed_result, parse_debug = self._parse_json_response(analysis_result)
+            if not parsed_result:
+                # Persist raw response for debugging
+                debug_file = self._write_debug_output("document_analysis", analysis_result, suffix="raw_response")
+                self.log(f"Failed to parse JSON after recovery attempts. Raw saved to {debug_file}")
+                raise ValueError(f"Invalid JSON response from LLM: {parse_debug}")
+            else:
                 self.log("Successfully parsed LLM response as JSON")
-            except json.JSONDecodeError as e:
-                # If JSON parsing fails, log the error and re-raise
-                self.log(f"Failed to parse JSON from LLM response: {str(e)}")
-                self.log(f"Raw LLM response: {analysis_result}")
-                raise ValueError(f"Invalid JSON response from LLM: {str(e)}")
             
             # Store original count before validation
             original_count = len(parsed_result.get("scenarioList", []))
@@ -134,6 +134,70 @@ class DocumentAnalyzer(BaseAgent):
                 "status": "error",
                 "error": str(e)
             }
+
+    # ---------------- Internal Helpers: JSON Parsing & Recovery -----------------
+    def _parse_json_response(self, raw: str):
+        """Attempt to parse LLM output into JSON with multiple recovery strategies.
+
+        Returns (parsed_json_or_none, debug_message)
+        """
+        if raw is None:
+            return None, "Empty response"
+
+        text = raw.strip()
+
+        # Fast path
+        try:
+            return json.loads(text), "ok"
+        except Exception:
+            pass
+
+        # Remove markdown code fences
+        if text.startswith("```"):
+            # Extract content inside first fenced block
+            parts = text.split("```")
+            # parts example: ['', 'json', '{...}', ''] or ['','json\n{...}','']
+            for segment in parts:
+                seg = segment.strip()
+                if seg.startswith('{') and seg.endswith('}'):
+                    try:
+                        return json.loads(seg), "parsed_from_code_fence"
+                    except Exception:
+                        # continue
+                        pass
+            # Remove any language hint like ```json
+            text = '\n'.join([p for p in parts if '{' in p])
+
+        # Attempt bracket extraction: find first '{' and last '}'
+        first = text.find('{')
+        last = text.rfind('}')
+        if first != -1 and last != -1 and last > first:
+            candidate = text[first:last+1]
+            try:
+                return json.loads(candidate), "parsed_from_brace_slice"
+            except Exception:
+                # Try minor repairs
+                repaired = self._repair_common_json_issues(candidate)
+                if repaired:
+                    try:
+                        return json.loads(repaired), "parsed_after_repair"
+                    except Exception as e:
+                        return None, f"repair_failed: {e}"
+
+        return None, "all_strategies_failed"
+
+    def _repair_common_json_issues(self, text: str) -> str:
+        """Attempt minimal, safe repairs (dangling commas, code fences removal)."""
+        repaired = text.strip()
+        # Remove leading/trailing markdown fences if still present
+        if repaired.startswith('```'):
+            repaired = repaired.lstrip('`')
+        if repaired.endswith('```'):
+            repaired = repaired.rstrip('`')
+        # Remove trailing commas before closing list/dict
+        repaired = repaired.replace(',\n]', '\n]')
+        repaired = repaired.replace(',\n}', '\n}')
+        return repaired
     
     def _validate_analysis_result(self, result: Dict[str, Any]) -> None:
         """

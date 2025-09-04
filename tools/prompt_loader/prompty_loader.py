@@ -130,18 +130,25 @@ class PromptyLoader:
         try:
             metadata = self.get_prompt_metadata(agent_name, prompt_name)
             
-            # Check if prompty has model parameters
+            # Check if prompty has model parameters - if not, return base LLM (all config from env)
             if "model" not in metadata or "parameters" not in metadata["model"]:
                 return base_llm
             
             prompty_params = metadata["model"]["parameters"]
+            
+            # If prompty has empty parameters section, return base LLM (all config from env)
+            if not prompty_params:
+                return base_llm
             
             # Extract relevant parameters
             llm_kwargs = {}
             if "temperature" in prompty_params:
                 llm_kwargs["temperature"] = prompty_params["temperature"]
             if "max_tokens" in prompty_params:
-                llm_kwargs["max_tokens"] = prompty_params["max_tokens"]
+                # Always put token limits in model_kwargs to avoid conflicts with base parameters
+                if "model_kwargs" not in llm_kwargs:
+                    llm_kwargs["model_kwargs"] = {}
+                llm_kwargs["model_kwargs"]["max_completion_tokens"] = prompty_params["max_tokens"]
             
             # If no relevant parameters found, return base LLM
             if not llm_kwargs:
@@ -169,7 +176,16 @@ class PromptyLoader:
                     if required_attr not in current_params and hasattr(base_llm, required_attr):
                         current_params[required_attr] = getattr(base_llm, required_attr)
 
-                # Update with prompty parameters (e.g., temperature, max_tokens)
+                # Merge model_kwargs properly to avoid token parameter conflicts
+                base_model_kwargs = current_params.get("model_kwargs", {})
+                new_model_kwargs = llm_kwargs.get("model_kwargs", {})
+                if base_model_kwargs or new_model_kwargs:
+                    merged_model_kwargs = {**base_model_kwargs, **new_model_kwargs}
+                    current_params["model_kwargs"] = merged_model_kwargs
+                    # Remove model_kwargs from llm_kwargs since we've merged it
+                    llm_kwargs.pop("model_kwargs", None)
+
+                # Update with prompty parameters (temperature, etc. but not model_kwargs)
                 current_params.update(llm_kwargs)
 
                 # Create new LLM instance with updated parameters

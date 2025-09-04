@@ -7,6 +7,7 @@ This package contains all external system integrations for the Bug Bash Agent.
 from .azure_openai.client import (
     AzureOpenAIClient,
     get_azure_openai_client,
+    get_agent_azure_openai_client,
     check_azure_config,
     get_missing_azure_config
 )
@@ -39,6 +40,7 @@ __all__ = [
     # Azure OpenAI
     'AzureOpenAIClient',
     'get_azure_openai_client',
+    'get_agent_azure_openai_client',
     'check_azure_config',
     'get_missing_azure_config',
     
