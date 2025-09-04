@@ -17,22 +17,25 @@ from config_package import (
 
 class AzureOpenAIClient:
     """Centralized Azure OpenAI client for the Bug Bash Agent."""
-    
-    def __init__(self, 
-                 api_key: Optional[str] = None,
-                 endpoint: Optional[str] = None,
-                 api_version: Optional[str] = None,
-                 deployment_name: Optional[str] = None,
-                 temperature: float = 0.7,
-                 max_tokens: int = 8000):
-        """
-        Initialize Azure OpenAI client.
-        
+
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        endpoint: Optional[str] = None,
+        api_version: Optional[str] = None,
+        deployment_name: Optional[str] = None,
+        model_name: Optional[str] = None,
+        temperature: float = 0.7,
+        max_tokens: int = 8000,
+    ):
+        """Initialize Azure OpenAI client.
+
         Args:
             api_key: Azure OpenAI API key (defaults to env var)
             endpoint: Azure OpenAI endpoint (defaults to env var)
             api_version: Azure OpenAI API version (defaults to env var)
             deployment_name: Azure OpenAI deployment name (defaults to env var)
+            model_name: Optional logical model name (logged / forwarded if provided)
             temperature: Model temperature (0-1)
             max_tokens: Maximum tokens for response
         """
@@ -40,12 +43,13 @@ class AzureOpenAIClient:
         self.endpoint = endpoint or AZURE_OPENAI_ENDPOINT
         self.api_version = api_version or AZURE_OPENAI_API_VERSION
         self.deployment_name = deployment_name or AZURE_OPENAI_DEPLOYMENT_NAME
+        self.model_name = model_name
         self.temperature = temperature
         self.max_tokens = max_tokens
-        
+
         # Validate configuration
         self._validate_config()
-        
+
         # Initialize the LangChain client
         self._client = None
     
@@ -84,6 +88,9 @@ class AzureOpenAIClient:
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
         }
+        # Include model name if provided (ignored by Azure if azure_deployment used, but safe)
+        if self.model_name:
+            params["model"] = self.model_name
         params.update(kwargs)
         
         return AzureChatOpenAI(**params)
@@ -138,10 +145,13 @@ def get_agent_azure_openai_client(agent_name: str, **overrides) -> AzureChatOpen
     as kwargs take highest precedence.
 
     Environment variable pattern (example for Document Analyzer):
+        DOCUMENT_ANALYZER_API_KEY
+        DOCUMENT_ANALYZER_ENDPOINT
         DOCUMENT_ANALYZER_DEPLOYMENT_NAME
         DOCUMENT_ANALYZER_API_VERSION
         DOCUMENT_ANALYZER_TEMPERATURE
         DOCUMENT_ANALYZER_MAX_TOKENS
+        DOCUMENT_ANALYZER_MODEL_NAME
 
     Supported agent prefixes (case-insensitive):
         document_analyzer -> DOCUMENT_ANALYZER_*
@@ -174,8 +184,11 @@ def get_agent_azure_openai_client(agent_name: str, **overrides) -> AzureChatOpen
         return os.getenv(f"{env_prefix}_{suffix}", default)
 
     # Gather per-agent settings with fallbacks
+    api_key = _env("API_KEY", AZURE_OPENAI_API_KEY)
+    endpoint = _env("ENDPOINT", AZURE_OPENAI_ENDPOINT)
     deployment_name = _env("DEPLOYMENT_NAME", AZURE_OPENAI_DEPLOYMENT_NAME)
     api_version = _env("API_VERSION", AZURE_OPENAI_API_VERSION)
+    model_name = _env("MODEL_NAME", None)
     try:
         temperature = float(_env("TEMPERATURE", str(overrides.get("temperature", 0.7))))
     except (TypeError, ValueError):
@@ -187,20 +200,27 @@ def get_agent_azure_openai_client(agent_name: str, **overrides) -> AzureChatOpen
         max_tokens = overrides.get("max_tokens", 8000)
 
     # Allow explicit overrides to win
+    if "api_key" in overrides:
+        api_key = overrides["api_key"]
+    if "endpoint" in overrides:
+        endpoint = overrides["endpoint"]
     if "deployment_name" in overrides:
         deployment_name = overrides["deployment_name"]
     if "api_version" in overrides:
         api_version = overrides["api_version"]
+    if "model_name" in overrides:
+        model_name = overrides["model_name"]
     if "temperature" in overrides:
         temperature = overrides["temperature"]
     if "max_tokens" in overrides:
         max_tokens = overrides["max_tokens"]
 
     client_manager = AzureOpenAIClient(
-        api_key=AZURE_OPENAI_API_KEY,
-        endpoint=AZURE_OPENAI_ENDPOINT,
+        api_key=api_key,
+        endpoint=endpoint,
         api_version=api_version,
         deployment_name=deployment_name,
+        model_name=model_name,
         temperature=temperature,
         max_tokens=max_tokens,
     )
