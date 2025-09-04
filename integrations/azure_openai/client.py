@@ -129,6 +129,84 @@ def get_azure_openai_client(**kwargs) -> AzureChatOpenAI:
     return client_manager.get_client(**kwargs)
 
 
+# --- Per-Agent Model Configuration -------------------------------------------------
+def get_agent_azure_openai_client(agent_name: str, **overrides) -> AzureChatOpenAI:
+    """Create a dedicated AzureChatOpenAI client for a specific agent.
+
+    Supports per-agent overrides via environment variables. Falls back to global
+    configuration when a specific value is not provided. Explicit overrides passed
+    as kwargs take highest precedence.
+
+    Environment variable pattern (example for Document Analyzer):
+        DOCUMENT_ANALYZER_DEPLOYMENT_NAME
+        DOCUMENT_ANALYZER_API_VERSION
+        DOCUMENT_ANALYZER_TEMPERATURE
+        DOCUMENT_ANALYZER_MAX_TOKENS
+
+    Supported agent prefixes (case-insensitive):
+        document_analyzer -> DOCUMENT_ANALYZER_*
+        code_generator    -> CODE_GENERATOR_*
+
+    Args:
+        agent_name: Logical agent identifier (e.g. 'document_analyzer', 'code_generator').
+        **overrides: Direct parameter overrides (temperature, max_tokens, deployment, etc.).
+
+    Returns:
+        AzureChatOpenAI: Configured client instance for the agent.
+    """
+    prefix_map = {
+        'document analyzer': 'DOCUMENT_ANALYZER',
+        'document_analyzer': 'DOCUMENT_ANALYZER',
+        'documentanalyzer': 'DOCUMENT_ANALYZER',
+        'code generator': 'CODE_GENERATOR',
+        'code_generator': 'CODE_GENERATOR',
+        'codegenerator': 'CODE_GENERATOR',
+    }
+
+    key = agent_name.strip().lower()
+    env_prefix = prefix_map.get(key)
+    if not env_prefix:
+        # Fallback to generic client if agent not mapped
+        return get_azure_openai_client(**overrides)
+
+    # Helper to fetch env var
+    def _env(suffix: str, default: Optional[str] = None):
+        return os.getenv(f"{env_prefix}_{suffix}", default)
+
+    # Gather per-agent settings with fallbacks
+    deployment_name = _env("DEPLOYMENT_NAME", AZURE_OPENAI_DEPLOYMENT_NAME)
+    api_version = _env("API_VERSION", AZURE_OPENAI_API_VERSION)
+    try:
+        temperature = float(_env("TEMPERATURE", str(overrides.get("temperature", 0.7))))
+    except (TypeError, ValueError):
+        temperature = overrides.get("temperature", 0.7)
+    max_tokens_raw = _env("MAX_TOKENS", str(overrides.get("max_tokens", 8000)))
+    try:
+        max_tokens = int(max_tokens_raw)
+    except (TypeError, ValueError):
+        max_tokens = overrides.get("max_tokens", 8000)
+
+    # Allow explicit overrides to win
+    if "deployment_name" in overrides:
+        deployment_name = overrides["deployment_name"]
+    if "api_version" in overrides:
+        api_version = overrides["api_version"]
+    if "temperature" in overrides:
+        temperature = overrides["temperature"]
+    if "max_tokens" in overrides:
+        max_tokens = overrides["max_tokens"]
+
+    client_manager = AzureOpenAIClient(
+        api_key=AZURE_OPENAI_API_KEY,
+        endpoint=AZURE_OPENAI_ENDPOINT,
+        api_version=api_version,
+        deployment_name=deployment_name,
+        temperature=temperature,
+        max_tokens=max_tokens,
+    )
+    return client_manager.get_client()
+
+
 def check_azure_config() -> bool:
     """
     Check if Azure OpenAI configuration is properly set up.

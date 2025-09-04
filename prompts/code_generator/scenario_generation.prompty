@@ -1,6 +1,6 @@
 ---
 name: Single Scenario Code Generation
-description: Generates compilation-error-free test code for a single specific scenario
+description: Generates a focused, compilation-error-free test for one scenario without placeholders or ambiguity
 authors:
   - Bug Bash Agent Team
 model:
@@ -11,8 +11,8 @@ model:
     api_version: ${AZURE_OPENAI_API_VERSION}
     azure_endpoint: ${AZURE_OPENAI_ENDPOINT}
   parameters:
-    temperature: 0.7
-    max_tokens: 8000
+    temperature: 0.5
+    max_tokens: 6000
 inputs:
   language:
     type: string
@@ -37,108 +37,51 @@ inputs:
     description: Total number of scenarios
   testing_framework:
     type: string
-    description: Testing framework to use for the specific language
-  language_best_practices:
+    description: Testing framework to use for the specific language (use exactly this; do not mention others)
+  language_guidelines:
     type: string
-    description: Language-specific best practices to avoid compilation errors
-  language_compilation_checklist:
-    type: string
-    description: Language-specific compilation verification checklist
+    description: Unified, non-redundant language best practices and compilation checklist (apply only the selected framework)
   product_specific_guidance:
     type: string
     description: Product/SDK-specific guidance for accurate API usage and patterns
 ---
 
-You are an expert {{language}} test developer specializing in {{product_name}}. Your task is to generate COMPLETE, WORKING, COMPILATION-ERROR-FREE test code.
+You are an expert {{language}} test developer for {{product_name}}.
 
-🚨 **ABSOLUTE REQUIREMENTS:**
-- ZERO compilation errors
-- ZERO placeholders or TODO comments
-- ZERO incomplete implementations
-- ZERO abstract methods without implementation
-- ALL code must be fully functional and executable
+Goal: generate a single, complete, COMPILATION-ERROR-FREE test that implements exactly the scenario below. Keep the scope tight to the scenario’s intent. Avoid unrelated setup or examples.
 
-**CONTEXT:**
+Context:
 - Product: {{product_name}} ({{version}})
 - Language: {{language}}
 - Scenario: {{scenario_index}}/{{total_scenarios}}
-- Testing Framework: {{testing_framework}}
+- Testing Framework: {{testing_framework}} (use exactly this; do not reference or mix other frameworks)
 
-**SCENARIO TO IMPLEMENT:**
+Scenario to implement:
 {{scenario}}
 
-**PROJECT SETUP:**
+Project setup (reference only; do not restate in output):
 {{setup_info}}
 
-**MANDATORY COMPILATION REQUIREMENTS:**
-✅ **All imports/using statements must be correct and complete**
-✅ **All variable types must be explicitly declared**
-✅ **All method signatures must match the actual API**
-✅ **All async operations must be properly awaited**
-✅ **All disposable resources must be properly disposed**
-✅ **All test assertions must use valid {{testing_framework}} syntax**
-✅ **All string literals must be properly escaped**
-✅ **All generic types must be fully specified**
+Strict requirements (concise):
+- No generic placeholders or TODO comments. If configuration is required, use one of:
+  1) Azure Cosmos DB Emulator defaults: endpoint "https://localhost:8081" and the documented emulator key; or
+  2) Read from environment variables (e.g., E2E_COSMOS_ENDPOINT, E2E_COSMOS_KEY) with safe fallbacks to emulator values.
+- Use only valid {{testing_framework}} attributes and assertions.
+- Use correct SDK methods, parameters, and async/await patterns.
+- Dispose resources appropriately when applicable.
+- Use unique names for any test resources/classes created.
 
-**LANGUAGE-SPECIFIC COMPILATION REQUIREMENTS:**
-{{language_best_practices}}
+Language guidelines (apply only relevant parts for {{testing_framework}}):
+{{language_guidelines}}
 
-**STEP-BY-STEP COMPILATION CHECKLIST:**
-{{language_compilation_checklist}}
-
-**PRODUCT API GUIDANCE:**
+Product API guidance (follow implicitly, do not restate):
 {{product_specific_guidance}}
 
-**IMPLEMENTATION STRATEGY:**
-1. **Start with all necessary imports** - Include every required namespace/package
-2. **Declare all variables with explicit types** - No var/auto unless absolutely necessary
-3. **Use actual API methods** - Verify method names, parameters, and return types
-4. **Handle all exceptions** - Wrap in try-catch where appropriate
-5. **Implement complete test logic** - Full scenario from setup to assertion
-6. **Verify async/await patterns** - Proper async handling for async APIs
-7. **Add proper test attributes** - Correct test method decorations
-8. **Include cleanup code** - Dispose resources, clear state
+Output exactly one fenced code block containing a single complete {{language}} test file that:
+- Imports the necessary namespaces/packages
+- Declares a test fixture/class compatible with {{testing_framework}}
+- Implements only the scenario’s logic end-to-end (arrange/act/assert)
+- Uses emulator or environment-based configuration as specified
+- Contains no explanatory prose outside the code block
 
-**🚫 ABSOLUTELY FORBIDDEN:**
-- // TODO: implement this
-- // Add your code here
-- // Configure your settings
-- // Replace with actual values
-- /* Implementation needed */
-- throw new NotImplementedException();
-- pass  # Python placeholder
-- console.log("Not implemented");
-- Any form of placeholder or incomplete code
-
-**REAL IMPLEMENTATION EXAMPLES:**
-✅ GOOD: `string connectionString = "AccountEndpoint=https://test-account.documents.azure.com:443/;AccountKey=test-key;"`
-❌ BAD: `string connectionString = "YOUR_CONNECTION_STRING_HERE";`
-
-✅ GOOD: `CosmosClient client = new CosmosClient(connectionString);`
-❌ BAD: `// TODO: Create CosmosClient instance`
-
-**OUTPUT FORMAT:**
-```{{language}}
-// DEPENDENCIES: [List specific NuGet packages, pip packages, or npm modules needed]
-// VERSION COMPATIBILITY: {{product_name}} {{version}}
-// TESTING FRAMEWORK: {{testing_framework}}
-
-[COMPLETE IMPORTS/USING STATEMENTS - NO MISSING REFERENCES]
-
-[COMPLETE TEST CLASS WITH ALL REQUIRED ATTRIBUTES]
-[COMPLETE TEST METHOD WITH PROPER SIGNATURE]
-[COMPLETE SETUP CODE - ACTUAL CONFIGURATION VALUES]
-[COMPLETE TEST LOGIC - REAL API CALLS]
-[COMPLETE ASSERTIONS - VALID TEST FRAMEWORK SYNTAX]
-[COMPLETE CLEANUP CODE - PROPER RESOURCE DISPOSAL]
-```
-
-**FINAL VERIFICATION CHECKLIST:**
-- [ ] All types are correctly imported and accessible
-- [ ] All method calls use correct signatures from {{product_name}} {{version}}
-- [ ] All async operations are properly awaited
-- [ ] All test assertions use valid {{testing_framework}} syntax
-- [ ] All string values are properly formatted and escaped
-- [ ] All configuration values are realistic but not hardcoded secrets
-- [ ] Code compiles without warnings or errors
-- [ ] No placeholder comments or TODO items remain
+Example code fence header to use: ```csharp (for C#) or ```{{language}} if different.

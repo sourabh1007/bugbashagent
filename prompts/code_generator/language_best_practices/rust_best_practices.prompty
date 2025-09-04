@@ -19,3 +19,8 @@ inputs:
 **{{testing_framework}} Framework Guidelines:**
 - Standard testing: Use #[test], #[cfg(test)], assert_eq!()
 - Custom frameworks: Follow crate-specific patterns with proper assertions
+
+**Compilation checklist (concise):**
+• Add required use statements; reference crates in Cargo.toml
+• Handle Result/Option explicitly; propagate errors with ? where appropriate
+• Respect ownership/borrowing rules; use match for pattern handling

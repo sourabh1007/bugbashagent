@@ -20,3 +20,8 @@ inputs:
 - Jest: Use describe(), it(), expect().toBe()
 - Mocha: Use describe(), it() with assertion library (chai)
 - Jasmine: Use describe(), it(), expect().toEqual()
+
+**Compilation checklist (concise):**
+• Use module-compliant import/export syntax and proper tsconfig/jsconfig
+• Guard against null/undefined before property access
+• Ensure all async operations are awaited or handled as Promises

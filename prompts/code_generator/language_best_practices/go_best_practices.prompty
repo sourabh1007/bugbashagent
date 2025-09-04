@@ -20,3 +20,8 @@ inputs:
 - Standard testing: Use TestXxx functions, testing.T, t.Error()/t.Fatal()
 - Testify: Use suite.Suite, assert.Equal(), require.NoError()
 - Ginkgo: Use Describe(), It(), Expect().To()
+
+**Compilation checklist (concise):**
+• Ensure correct package name and imports; unused imports must be removed
+• Check and handle all error return values
+• Initialize slices/maps with make() when needed; guard nil pointers

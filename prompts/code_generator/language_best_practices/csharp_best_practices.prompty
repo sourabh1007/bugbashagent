@@ -15,8 +15,13 @@ inputs:
 5. Properly dispose resources with using statements
 6. Use correct generic type parameters
 7. Use proper access modifiers (public, private, internal, protected)
+8. Make sure you are referring right package for a class, for example, HTTPClient belongs to `System.Net.Http` package, it not part of `Microsoft.Azure.Cosmos`
+
 
 **{{testing_framework}} Framework Guidelines:**
 - NUnit: Use [TestFixture], [Test], [SetUp], [TearDown], Assert.That() syntax
-- MSTest: Use [TestClass], [TestMethod], [TestInitialize], [TestCleanup], Assert.AreEqual() syntax  
-- xUnit: Use [Fact], [Theory], constructor/IDisposable, Assert.Equal() syntax
+
+**Compilation checklist (concise):**
+• Verify method signatures exactly match SDK docs (name, parameters, return type)
+• Use only documented public APIs from the SDK
+

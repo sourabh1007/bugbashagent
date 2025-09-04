@@ -16,6 +16,7 @@ import sys
 # Import integrations
 from integrations import (
     get_azure_openai_client,
+    get_agent_azure_openai_client,
     check_azure_config,
     get_missing_azure_config,
     setup_langsmith,
@@ -336,21 +337,31 @@ def main():
         # Get user input
         requirements = get_user_input()
         
-        # Initialize Azure OpenAI LLM
-        print("\n🔧 Initializing Azure OpenAI Language Model...")
-        llm = get_azure_openai_client(temperature=TEMPERATURE)
+        # Initialize distinct Azure OpenAI LLMs per agent (merged later in workflow)
+        print("\n🔧 Initializing Azure OpenAI Language Models (per agent)...")
+        document_llm = get_agent_azure_openai_client(
+            "document_analyzer",
+            temperature=TEMPERATURE
+        )
+        code_llm = get_agent_azure_openai_client(
+            "code_generator",
+            temperature=TEMPERATURE
+        )
+
+        # Choose default llm for backward compatibility (first agent)
+        llm = document_llm
         
         # Configure LLM for LangSmith tracing
         llm = configure_llm_tracing(llm)
         
         # Create and execute workflow
         print("🚀 Starting multi-agent code development workflow...")
-        workflow = AgentWorkflow(llm)
+        workflow = AgentWorkflow(llm, code_llm=code_llm)
         results = workflow.execute_workflow(requirements)
-        
+
         # Display summary
         print("\n" + workflow.get_workflow_summary(results))
-        
+
         # Display final output if successful
         if results['workflow_status'] == 'completed':
             print("\n📋 FINAL CODE EXECUTION REPORT:")

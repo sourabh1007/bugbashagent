@@ -7,19 +7,24 @@ from integrations.langsmith import trace_workflow_execution, LangSmithIntegratio
 
 
 class AgentWorkflow:
-    """Manages the workflow of multiple agents passing data sequentially"""
-    
-    def __init__(self, llm: Any):
-        self.llm = llm
+    """Manages the workflow of multiple agents passing data sequentially.
+
+    Supports distinct LLM instances per agent (e.g., document analyzer vs code generator)
+    to allow different model deployments / temperatures / token limits.
+    """
+
+    def __init__(self, llm: Any, code_llm: Any = None):
+        self.llm = llm  # default / document analyzer llm
+        self.code_llm = code_llm or llm
         self.agents = self._initialize_agents()
         self.workflow_history = []
         self.output_folder = None
     
     def _initialize_agents(self) -> List[Any]:
-        """Initialize all agents in the workflow"""
+        """Initialize all agents in the workflow with their designated LLMs."""
         return [
             DocumentAnalyzer(self.llm),
-            CodeGenerator(self.llm)
+            CodeGenerator(self.code_llm)
         ]
     
     def _create_output_folder(self) -> str:

@@ -10,7 +10,6 @@ class LanguageBestPracticesManager:
     
     def __init__(self):
         self.base_path = "prompts/code_generator/language_best_practices"
-        self.compilation_checklist_base_path = "prompts/code_generator/language_compilation_checklists"
         self.product_specific_base_path = "prompts/code_generator/product_specific"
         self._language_file_mapping = {
             'c#': 'csharp_best_practices.prompty',
@@ -101,21 +100,7 @@ class LanguageBestPracticesManager:
                 'golang': 'cosmos_db/go_cosmos_guidance.prompty',
                 'rust': 'cosmos_db/rust_cosmos_guidance.prompty'
             }
-        }
-        self._compilation_checklist_file_mapping = {
-            'c#': 'csharp_compilation_checklist.prompty',
-            'csharp': 'csharp_compilation_checklist.prompty',
-            '.net': 'csharp_compilation_checklist.prompty',
-            'python': 'python_compilation_checklist.prompty',
-            'javascript': 'javascript_compilation_checklist.prompty',
-            'typescript': 'javascript_compilation_checklist.prompty',
-            'js': 'javascript_compilation_checklist.prompty',
-            'ts': 'javascript_compilation_checklist.prompty',
-            'java': 'java_compilation_checklist.prompty',
-            'go': 'go_compilation_checklist.prompty',
-            'golang': 'go_compilation_checklist.prompty',
-            'rust': 'rust_compilation_checklist.prompty'
-        }
+    }
     
     def get_language_best_practices(self, language: str, testing_framework: str = "standard") -> str:
         """Get language-specific best practices from prompty files."""
@@ -259,43 +244,18 @@ class LanguageBestPracticesManager:
 - Follow product-specific best practices and conventions
 """
     
-    def get_language_compilation_checklist(self, language: str) -> str:
-        """Get language-specific compilation checklist from prompty file."""
-        language_key = language.lower().strip()
-        
-        # Get the appropriate compilation checklist prompty file
-        prompty_file = self._compilation_checklist_file_mapping.get(language_key)
-        if not prompty_file:
-            return self._get_generic_compilation_checklist(language)
-        
+
+    def get_language_guidelines(self, language: str, testing_framework: str = "standard") -> str:
+        """Return non-redundant language guidelines.
+
+        Best practices files now embed a concise compilation checklist per language,
+        so we simply return the best practices content tailored to the testing framework.
+        """
         try:
-            # Read the prompty file content directly
-            prompty_path = f"{self.compilation_checklist_base_path}/{prompty_file}"
-            
-            # Check if file exists
-            if not os.path.exists(prompty_path):
-                return self._get_generic_compilation_checklist(language)
-            
-            # Read the file content
-            with open(prompty_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-            
-            # Extract the content after the YAML front matter
-            parts = content.split('---')
-            if len(parts) >= 3:
-                # Get the template content (after the second ---)
-                template_content = '---'.join(parts[2:]).strip()
-                
-                # Replace the language placeholder if needed
-                template_content = template_content.replace('{{language}}', language)
-                
-                return template_content
-            else:
-                return self._get_generic_compilation_checklist(language)
-            
+            return self.get_language_best_practices(language, testing_framework)
         except Exception as e:
-            print(f"Warning: Could not load compilation checklist for {language}: {e}")
-            return self._get_generic_compilation_checklist(language)
+            print(f"Warning: Could not build language guidelines for {language}: {e}")
+            return self._get_generic_best_practices(language, testing_framework).strip()
     
     def _get_generic_best_practices(self, language: str, testing_framework: str) -> str:
         """Fallback generic best practices for unsupported languages."""
@@ -314,9 +274,4 @@ class LanguageBestPracticesManager:
 **Testing Framework Guidelines:**
 Use {testing_framework} with proper test structure, assertions, and lifecycle management.
 """
-    
-    def _get_generic_compilation_checklist(self, language: str) -> str:
-        """Fallback generic compilation checklist for unsupported languages."""
-        return f"""**{language} Compilation Checklist:**
-✅ **{language}**: Proper syntax, imports, error handling, type safety, and language-specific conventions
-"""
+    # NOTE: Deprecated _get_generic_compilation_checklist removed after unification.

@@ -41,12 +41,9 @@ inputs:
   testing_framework:
     type: string
     description: Testing framework to use for the specific language
-  language_best_practices:
+  language_guidelines:
     type: string
-    description: Language-specific best practices to avoid compilation errors
-  language_compilation_checklist:
-    type: string
-    description: Language-specific compilation verification checklist
+    description: Unified, non-redundant language best practices and compilation checklist (apply only the selected framework)
   product_specific_guidance:
     type: string
     description: Product/SDK-specific guidance for accurate API usage and patterns
@@ -109,11 +106,8 @@ You are an expert {{language}} compilation error specialist and test developer. 
    - Missing test setup/teardown
    - **FIX:** Correct {{testing_framework}} patterns
 
-**MANDATORY COMPILATION FIXES:**
-{{language_best_practices}}
-
-**STEP-BY-STEP ERROR RESOLUTION:**
-{{language_compilation_checklist}}
+**LANGUAGE GUIDELINES & FIXES (apply relevant parts for {{testing_framework}}):**
+{{language_guidelines}}
 
 **{{product_name}} API REFERENCE:**
 {{product_specific_guidance}}

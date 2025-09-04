@@ -571,8 +571,11 @@ class CodeGenerator(BaseAgent):
                 
                 # Get language-specific testing framework and best practices
                 testing_framework = self._get_testing_framework(language)
-                language_best_practices = self._get_language_best_practices(language, testing_framework)
-                language_compilation_checklist = self._get_language_compilation_checklist(language)
+                # Build unified, non-redundant language guidelines
+                language_guidelines = self.language_best_practices_manager.get_language_guidelines(
+                    language=language,
+                    testing_framework=testing_framework
+                )
                 product_specific_guidance = self._get_product_specific_guidance(product_name, language, version)
                 
                 # Prepare prompt variables for single scenario
@@ -580,8 +583,7 @@ class CodeGenerator(BaseAgent):
                     "language": language.upper(),
                     "product_name": product_name,
                     "testing_framework": testing_framework,
-                    "language_best_practices": language_best_practices,
-                    "language_compilation_checklist": language_compilation_checklist,
+                    "language_guidelines": language_guidelines,
                     "product_specific_guidance": product_specific_guidance,
                     "version": version,
                     "scenario": scenario_text,
@@ -810,18 +812,13 @@ class CodeGenerator(BaseAgent):
         return testing_frameworks.get(language_lower, f'the standard testing framework for {language}')
     
     def _get_language_best_practices(self, language: str, testing_framework: str = None) -> str:
-        """Get language-specific best practices from prompty files"""
+        """Deprecated: retained for backward-compatibility; use get_language_guidelines instead."""
         if testing_framework is None:
             testing_framework = self._get_testing_framework(language)
-            
-        return self.language_best_practices_manager.get_language_best_practices(
+        return self.language_best_practices_manager.get_language_guidelines(
             language=language,
             testing_framework=testing_framework
         )
-    
-    def _get_language_compilation_checklist(self, language: str) -> str:
-        """Get language-specific compilation checklist from prompty file"""
-        return self.language_best_practices_manager.get_language_compilation_checklist(language)
     
     def _get_product_specific_guidance(self, product_name: str, language: str = "", version: str = "") -> str:
         """Get product-specific guidance for SDK/API usage."""
@@ -3672,10 +3669,12 @@ class {class_name}Test {{
         scenario_text = self._format_single_scenario_for_prompt(enhanced_scenario, scenario_index)
         setup_info_text = json.dumps(setup_info, indent=2)
         
-        # Get language-specific testing framework and best practices for error fix
+        # Get language-specific testing framework and unified guidelines for error fix
         testing_framework = self._get_testing_framework(language)
-        language_best_practices = self._get_language_best_practices(language, testing_framework)
-        language_compilation_checklist = self._get_language_compilation_checklist(language)
+        language_guidelines = self.language_best_practices_manager.get_language_guidelines(
+            language=language,
+            testing_framework=testing_framework
+        )
         product_specific_guidance = self._get_product_specific_guidance(product_name, language, version)
         
         # Prepare prompt variables for single scenario
@@ -3683,8 +3682,7 @@ class {class_name}Test {{
             "language": language.upper(),
             "product_name": product_name,
             "testing_framework": testing_framework,
-            "language_best_practices": language_best_practices,
-            "language_compilation_checklist": language_compilation_checklist,
+            "language_guidelines": language_guidelines,
             "product_specific_guidance": product_specific_guidance,
             "version": version,
             "scenario": scenario_text,
@@ -4094,23 +4092,24 @@ class {class_name}Test {{
             )
             
             chain = LLMChain(llm=llm_for_chain, prompt=prompt_template)
-            
+
             # Format scenario for prompt
             formatted_scenario = self._format_single_scenario_for_prompt(scenario, 1)
-            
-            # Get language-specific testing framework and best practices
+
+            # Get language-specific testing framework and unified guidelines
             testing_framework = self._get_testing_framework(language)
-            language_best_practices = self._get_language_best_practices(language, testing_framework)
-            language_compilation_checklist = self._get_language_compilation_checklist(language)
+            language_guidelines = self.language_best_practices_manager.get_language_guidelines(
+                language=language,
+                testing_framework=testing_framework
+            )
             product_specific_guidance = self._get_product_specific_guidance(product_name, language, version)
-            
+
             # Prepare prompt variables for logging
             prompt_vars = {
                 "language": language,
                 "product_name": product_name,
                 "testing_framework": testing_framework,
-                "language_best_practices": language_best_practices,
-                "language_compilation_checklist": language_compilation_checklist,
+                "language_guidelines": language_guidelines,
                 "product_specific_guidance": product_specific_guidance,
                 "version": version,
                 "scenario": formatted_scenario,
@@ -4131,20 +4130,13 @@ class {class_name}Test {{
             )
             
             # Generate code
-            result = chain.run(
-                language=language,
-                product_name=product_name,
-                version=version,
-                scenario=formatted_scenario,
-                setup_info=setup_info,
-                scenario_index=1,
-                total_scenarios=1
-            )
-            
-            if result and result.strip():
+            scenario_result = chain.invoke(prompt_vars)
+            generated = scenario_result.get("text") if isinstance(scenario_result, dict) else scenario_result
+
+            if generated and isinstance(generated, str) and generated.strip():
                 # Extract code from result if needed
-                extracted_code = self._extract_code_from_result(result, language)
-                return extracted_code if extracted_code else result
+                extracted_code = self._extract_code_from_result(generated, language)
+                return extracted_code if extracted_code else generated
             else:
                 self.log(f"❌ Empty result from LLM for scenario")
                 return None

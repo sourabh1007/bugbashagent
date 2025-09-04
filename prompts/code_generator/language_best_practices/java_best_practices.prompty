@@ -20,3 +20,8 @@ inputs:
 - JUnit 5: Use @Test, assertEquals(), @BeforeEach/@AfterEach
 - JUnit 4: Use @Test, Assert.assertEquals(), @Before/@After
 - TestNG: Use @Test, Assert.assertEquals(), @BeforeMethod/@AfterMethod
+
+**Compilation checklist (concise):**
+• Import all used classes; avoid relying on default packages
+• Use proper generics (List<String>) and access modifiers
+• Handle checked exceptions with try-catch or throws

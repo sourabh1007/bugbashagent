@@ -26,20 +26,23 @@ The **Bug Bash Agent** is an advanced AI-powered code generation system that tra
 
 ### 🔄 Multi-Agent Workflow
 
-The system uses a sophisticated 2-agent workflow:
+Active workflow:
 
 1. **📊 Document Analyzer Agent** → 2. **🛠️ Code Generator Agent**
 
-With intelligent feedback loops for compilation error handling and selective scenario regeneration.
+Compilation validation + selective regeneration happen inside the Code Generator (earlier references to a third "Code Executor" stage have been removed).
 
 ### 🔧 Architecture Features
 
 #### External Prompt Management
-- **Prompty Files**: All LLM prompts moved to `.prompty` files with YAML metadata
-- **Dynamic Variables**: Template variables replaced at runtime using PromptyLoader
-- **Version Control**: Prompts now versioned and maintainable separately from code
+
+- **Prompty Files**: All prompts are `.prompty` files with YAML metadata
+- **Unified Language Guidance**: `language_guidelines` replaces separate best-practices + compilation checklist prompts (each best-practice file embeds a concise checklist)
+- **Dynamic Variables**: Runtime substitution via `PromptyLoader`
+- **Version Control**: Prompts versioned separately from code
 
 #### Organized Tool Architecture
+
 - **tools/compilation/**: Compilation and error checking utilities
 - **tools/file_management/**: File creation and management tools  
 - **tools/parsing/**: Code parsing and analysis tools
@@ -47,23 +50,15 @@ With intelligent feedback loops for compilation error handling and selective sce
 - **tools/prompt_loader/**: Prompty file loading and processing utilities
 
 #### Enhanced Error Handling
+
 - **Selective Retry**: Only failed scenarios are regenerated, preserving working code
 - **Error Context**: Compilation errors passed to LLM with specific fix suggestions
 - **Comprehensive Reporting**: Detailed analysis of all attempts, errors, and fixes
 
 ### 🧠 Agent Responsibilities
 
-1. **📊 Document Analyzer Agent**
-   - Analyzes business requirements and documentation
-   - Extracts structured information and scenarios
-   - Generates 15-25+ comprehensive test scenarios
-   - Prevents duplicate scenarios with advanced detection
-
-2. **🛠️ Code Generator Agent**
-   - Generates compilation-error-free code for each scenario
-   - Implements selective retry system for failed scenarios
-   - Provides detailed error context to LLM for targeted fixes
-   - Creates comprehensive reports with attempt-by-attempt analysis
+1. **📊 Document Analyzer** – Extracts, deduplicates, and structures scenarios.
+2. **🛠️ Code Generator** – Generates code, performs selective regeneration for failed scenarios, and produces detailed reports.
 
 ## 🚀 Quick Start
 
@@ -111,14 +106,16 @@ For advanced monitoring, tracing, and observability, integrate with LangSmith:
 1. **Sign up** at [LangSmith](https://smith.langchain.com/)
 2. **Create an API key** in your LangSmith dashboard
 3. **Set environment variables** in your `.env` file:
-   ```env
-   LANGCHAIN_TRACING_V2=true
-   LANGCHAIN_API_KEY=your_langsmith_api_key_here
-   LANGCHAIN_PROJECT=BugBashAgent
-   ```
+
+```env
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_API_KEY=your_langsmith_api_key_here
+LANGCHAIN_PROJECT=BugBashAgent
+```
 4. **Monitor your runs** at the [LangSmith Dashboard](https://smith.langchain.com/projects)
 
 **LangSmith Features:**
+
 - 📊 Real-time workflow monitoring
 - 🔍 Detailed agent execution traces
 - 📈 Performance metrics and analytics  
@@ -127,6 +124,7 @@ For advanced monitoring, tracing, and observability, integrate with LangSmith:
 - 📋 Workflow success/failure analytics
 
 **LangSmith Setup:**
+
 1. Sign up at [LangSmith](https://smith.langchain.com/)
 2. Create an API key in your dashboard
 3. Run the setup script: `python setup_langsmith.py`
@@ -142,6 +140,7 @@ python main.py
 ## 🎛️ Usage Examples
 
 Choose from:
+
 1. **Direct Text Input**: Paste requirements directly
 2. **File Input**: Provide local file path  
 3. **URL Input**: Analyze documentation from web URLs
@@ -149,45 +148,38 @@ Choose from:
 ### Sample Input Formats
 
 The system accepts various input formats:
+
 - **API Documentation**: REST API specs, SDK documentation
 - **Requirements Documents**: Business requirements, user stories
 - **Technical Specifications**: Architecture docs, integration guides
 - **GitHub README files**: Project documentation from repositories
 
-## 📁 Project Structure
+## 📁 Project Structure (Simplified)
 
-```
+```text
 bugbashagent/
-├── 📁 agents/                          # Core agent implementations
-│   ├── 📄 document_analyzer.py         # Document analysis & scenario generation
-│   ├── 📄 code_generator.py            # Advanced code generation with error handling
-│   └── 📄 base_agent.py               # Base agent class with prompt logging
-├── 📁 config_package/                  # Configuration management
-│   ├── 📄 __init__.py                 # Main configuration settings
-│   └── 📄 package_versions.py         # SDK version management
-├── 📁 factories/                       # Prompt generation factories
-│   └── 📄 prompt_factory.py           # Language-specific prompt strategies
-├── 📁 integrations/                    # External system integrations
-│   ├── 📁 azure_openai/               # Azure OpenAI client integration
-│   ├── 📁 langsmith/                  # LangSmith monitoring & tracing
-│   ├── 📁 web/                        # Web content fetching utilities
-│   └── 📁 file_processing/            # Multi-format file processing
-├── 📁 patterns/                        # Language configuration patterns
-│   ├── 📄 language_config.py          # Language-specific configurations
-│   └── 📁 languages/                  # Individual language configs
-├── 📁 strategies/                      # Advanced prompt strategies
-│   ├── 📄 prompt_strategies.py        # Core prompt generation strategies
-│   └── 📁 languages/                  # Language-specific strategies
-├── 📁 tools/                          # Code generation utilities
-│   └── 📁 code_generator/             # Advanced code generation tools
-├── 📁 workflow_outputs/               # Generated outputs (timestamped folders)
-├── 📄 main.py                         # Main application entry point
-├── 📄 workflow.py                     # Multi-agent workflow orchestration
-├── 📄 requirements.txt                # Python dependencies
-└── 📄 README.md                       # This file
-```
+├── agents/                # document_analyzer, code_generator, base_agent
+├── config_package/        # global config & package versions
+├── factories/             # prompt strategy factory
+├── integrations/          # azure_openai, langsmith, web, file_processing
+├── patterns/              # language configs
+├── prompts/               # scenario, error-fix, language & product guidance prompty files
+├── strategies/            # advanced prompt strategies
+├── tools/                 # parsing, compilation, project generation, best practices manager
+├── workflow_outputs/      # run artifacts
+├── workflow.py            # workflow orchestration
+├── main.py                # CLI entrypoint
+├── requirements.txt
+└── README.md
+```text
 
-## 🔧 Advanced Features
+Removed legacy: standalone compilation checklist prompty files, temp/backup LangSmith integration modules, secondary integrations README.
+
+### 🔧 Unified Language Guidelines
+
+Use `language_guidelines` for each scenario or regeneration request. It merges best practices + a concise compilation checklist per language to reduce duplication and token usage.
+
+## 🔧 Advanced Features (Selected)
 
 ### 🎯 Selective Scenario Regeneration
 
@@ -240,6 +232,7 @@ Multiple levels of reporting for complete transparency:
 ## 🛠️ Supported Languages & Frameworks
 
 ### Programming Languages
+
 - **C#**: .NET Core, .NET Framework, Azure SDKs
 - **Python**: pytest, asyncio, popular libraries
 - **JavaScript/TypeScript**: Jest, Node.js, React
@@ -248,6 +241,7 @@ Multiple levels of reporting for complete transparency:
 - **Rust**: Built-in test framework, Cargo
 
 ### Popular SDKs & Libraries
+
 - **Azure SDKs**: Cosmos DB, Storage, Service Bus
 - **AWS SDKs**: S3, DynamoDB, Lambda
 - **Google Cloud**: Firestore, Cloud Storage
@@ -260,7 +254,7 @@ Multiple levels of reporting for complete transparency:
 
 Each run creates a timestamped folder with complete outputs:
 
-```
+```text
 workflow_output_YYYYMMDD_HHMMSS/
 ├── 📄 00_workflow_summary.txt           # Complete workflow summary
 ├── 📄 step_01_document_analyzer.txt     # Document analysis results
@@ -307,7 +301,15 @@ MODEL_NAME=gpt-4o
 
 Configure language-specific behavior in `config_package/package_versions.py`.
 
-## 🔍 Troubleshooting
+## 🔍 Troubleshooting & Recent Maintenance
+
+Recent cleanup (2025-09-04):
+
+- Unified language guidance (`language_guidelines`)
+- Removed deprecated compilation checklist prompts
+- Deleted backup/temporary LangSmith integration modules
+- Consolidated markdown into this single README
+- Clarified active 2-agent workflow
 
 ### Common Issues
 
@@ -375,3 +377,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 **Built with ❤️ using LangChain and Azure OpenAI**
+
+_README updated post-cleanup (2025-09-04)._ 

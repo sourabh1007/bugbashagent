@@ -20,3 +20,8 @@ inputs:
 - unittest: Inherit from unittest.TestCase, use self.assertEqual(), setUp()/tearDown()
 - pytest: Use test_* function names, assert statements, fixtures
 - nose: Similar to unittest but with @nose decorators
+
+**Compilation checklist (concise):**
+• Ensure imports cover all referenced modules (azure.cosmos, json, typing)
+• Maintain consistent 4-space indentation; avoid mixing tabs/spaces
+• Initialize variables before first use; add explicit None checks where needed
