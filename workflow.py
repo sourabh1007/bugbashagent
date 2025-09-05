@@ -2,7 +2,7 @@ from typing import List, Dict, Any
 import os
 import json
 from datetime import datetime
-from agents import CodeGenerator, DocumentAnalyzer
+from agents import CodeGenerator, DocumentAnalyzer, TestRunner
 from integrations.langsmith import trace_workflow_execution, LangSmithIntegration
 
 
@@ -13,9 +13,10 @@ class AgentWorkflow:
     to allow different model deployments / temperatures / token limits.
     """
 
-    def __init__(self, llm: Any, code_llm: Any = None):
+    def __init__(self, llm: Any, code_llm: Any = None, test_llm: Any = None):
         self.llm = llm  # default / document analyzer llm
         self.code_llm = code_llm or llm
+        self.test_llm = test_llm or llm
         self.agents = self._initialize_agents()
         self.workflow_history = []
         self.output_folder = None
@@ -24,7 +25,8 @@ class AgentWorkflow:
         """Initialize all agents in the workflow with their designated LLMs."""
         return [
             DocumentAnalyzer(self.llm),
-            CodeGenerator(self.code_llm)
+            CodeGenerator(self.code_llm),
+            TestRunner(self.test_llm)
         ]
     
     def _create_output_folder(self) -> str:
@@ -38,7 +40,7 @@ class AgentWorkflow:
         
         return output_path
     
-    def _write_code_generator_output_with_compilation_details(self, agent_name: str, step_number: int, input_data: str, output_data: Any, status: str) -> str:
+    def _write_code_generator_output_with_compilation_details(self, agent_name: str, step_number: int, input_data: str, agent_result: Any, status: str) -> str:
         """Enhanced version that includes detailed compilation attempt analysis"""
         # Clean agent name for filename
         clean_name = agent_name.lower().replace(" ", "_")
@@ -53,8 +55,16 @@ class AgentWorkflow:
                 f.write(f"TIMESTAMP: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
                 f.write("=" * 80 + "\n\n")
                 
+                # Extract output data safely
+                if isinstance(agent_result, dict):
+                    output_data = agent_result.get("output", {})
+                    # For CodeGenerator, compilation attempts might be in the root or in output
+                    compilation_attempts = agent_result.get("compilation_attempts", output_data.get("compilation_attempts", []) if isinstance(output_data, dict) else [])
+                else:
+                    output_data = agent_result
+                    compilation_attempts = []
+                
                 # Enhanced section: Compilation attempts analysis
-                compilation_attempts = output_data.get("compilation_attempts", [])
                 if compilation_attempts:
                     f.write("🔄 COMPILATION ATTEMPTS ANALYSIS\n")
                     f.write("=" * 50 + "\n\n")
@@ -69,9 +79,11 @@ class AgentWorkflow:
                     f.write(f"- Successful: {successful_attempts}\n")
                     f.write(f"- Failed: {failed_attempts}\n")
                     
-                    if successful_attempts > 0:
+                    if len(compilation_attempts) > 0:
                         success_rate = (successful_attempts / len(compilation_attempts)) * 100
                         f.write(f"- Success Rate: {success_rate:.1f}%\n")
+                    else:
+                        f.write(f"- Success Rate: N/A (no compilation attempts)\n")
                     
                     # Show selective scenario regeneration info if available
                     if output_data.get("selective_regeneration_used"):
@@ -161,6 +173,96 @@ class AgentWorkflow:
                     f.write(json.dumps(output_data, indent=2, ensure_ascii=False) + "\n")
                 else:
                     # For string outputs (like from other agents)
+                    f.write(str(output_data) + "\n")
+            
+            print(f"💾 Saved {agent_name} output to: {filename}")
+            return filepath
+            
+        except Exception as e:
+            print(f"❌ Error saving {agent_name} output: {str(e)}")
+            return None
+
+    def _write_test_runner_output_with_results(self, agent_name: str, step_number: int, input_data: str, agent_result: Any, status: str) -> str:
+        """Enhanced version that includes detailed test execution analysis"""
+        # Clean agent name for filename
+        clean_name = agent_name.lower().replace(" ", "_")
+        filename = f"step_{step_number:02d}_{clean_name}.txt"
+        filepath = os.path.join(self.output_folder, filename)
+        
+        try:
+            with open(filepath, 'w', encoding='utf-8') as f:
+                f.write(f"AGENT: {agent_name}\n")
+                f.write(f"STEP: {step_number}\n")
+                f.write(f"STATUS: {status}\n")
+                f.write(f"TIMESTAMP: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write("=" * 80 + "\n\n")
+                
+                # Extract output data safely
+                if isinstance(agent_result, dict):
+                    output_data = agent_result.get("output", {})
+                else:
+                    output_data = agent_result
+                
+                # Enhanced section: Test execution analysis
+                if isinstance(output_data, dict) and "output" in output_data:
+                    test_output = output_data["output"]
+                    execution_summary = output_data.get("execution_summary", {})
+                    
+                    f.write("🧪 TEST EXECUTION ANALYSIS\n")
+                    f.write("=" * 50 + "\n\n")
+                    
+                    f.write(f"📊 EXECUTIVE SUMMARY:\n")
+                    f.write(f"- Total Tests: {execution_summary.get('total_tests', 0)}\n")
+                    f.write(f"- Passed Tests: {execution_summary.get('passed_tests', 0)}\n")
+                    f.write(f"- Failed Tests: {execution_summary.get('failed_tests', 0)}\n")
+                    f.write(f"- Success Rate: {execution_summary.get('success_rate', 0):.1f}%\n")
+                    f.write(f"- Execution Time: {execution_summary.get('execution_time', 0):.2f}s\n")
+                    f.write("\n")
+                    
+                    # Test analysis section
+                    if "test_analysis" in test_output:
+                        test_analysis = test_output["test_analysis"]
+                        f.write("🤖 AI ANALYSIS:\n")
+                        f.write("-" * 30 + "\n")
+                        f.write(f"{test_analysis.get('llm_analysis', 'No analysis available')}\n\n")
+                        
+                        # Key insights
+                        insights = test_analysis.get("key_insights", [])
+                        if insights:
+                            f.write("💡 KEY INSIGHTS:\n")
+                            for insight in insights:
+                                f.write(f"- {insight}\n")
+                            f.write("\n")
+                        
+                        # Recommendations
+                        recommendations = test_analysis.get("recommendations", [])
+                        if recommendations:
+                            f.write("📋 RECOMMENDATIONS:\n")
+                            for rec in recommendations:
+                                f.write(f"- {rec}\n")
+                            f.write("\n")
+                        
+                        # Test quality score
+                        quality_score = test_analysis.get("test_quality_score", 0)
+                        f.write(f"⭐ TEST QUALITY SCORE: {quality_score}/100\n\n")
+                    
+                    # Comprehensive report link
+                    if "comprehensive_report" in test_output:
+                        f.write("📄 COMPREHENSIVE REPORT:\n")
+                        f.write(f"HTML report available in test results directory\n\n")
+                
+                # Standard workflow sections
+                f.write("INPUT:\n")
+                f.write("-" * 40 + "\n")
+                f.write(str(input_data) + "\n\n")
+                
+                f.write("OUTPUT:\n")
+                f.write("-" * 40 + "\n")
+                
+                # Handle different output types
+                if isinstance(output_data, dict):
+                    f.write(json.dumps(output_data, indent=2, ensure_ascii=False) + "\n")
+                else:
                     f.write(str(output_data) + "\n")
             
             print(f"💾 Saved {agent_name} output to: {filename}")
@@ -290,7 +392,7 @@ class AgentWorkflow:
                 # Store current agent result for detailed output saving
                 self._current_agent_result = agent_result
                 
-                # Save agent output to file with enhanced reporting for Code Generator
+                # Save agent output to file with enhanced reporting for specific agents
                 if agent_result["status"] == "success":
                     # Use enhanced reporting for Code Generator
                     if "code generator" in agent.name.lower():
@@ -298,7 +400,16 @@ class AgentWorkflow:
                             agent.name, 
                             i, 
                             current_input, 
-                            agent_result["output"], 
+                            agent_result, 
+                            agent_result["status"]
+                        )
+                    # Use enhanced reporting for Test Runner
+                    elif "test runner" in agent.name.lower():
+                        saved_file = self._write_test_runner_output_with_results(
+                            agent.name, 
+                            i, 
+                            current_input, 
+                            agent_result, 
                             agent_result["status"]
                         )
                     else:
@@ -312,13 +423,21 @@ class AgentWorkflow:
                     if saved_file:
                         workflow_results["saved_files"].append(saved_file)
                 else:
-                    # Save error output as well with enhanced reporting for Code Generator
+                    # Save error output as well with enhanced reporting for specific agents
                     if "code generator" in agent.name.lower():
                         saved_file = self._write_code_generator_output_with_compilation_details(
                             agent.name, 
                             i, 
                             current_input, 
-                            agent_result.get("output", {}), 
+                            agent_result, 
+                            agent_result["status"]
+                        )
+                    elif "test runner" in agent.name.lower():
+                        saved_file = self._write_test_runner_output_with_results(
+                            agent.name, 
+                            i, 
+                            current_input, 
+                            agent_result, 
                             agent_result["status"]
                         )
                     else:
@@ -345,7 +464,7 @@ class AgentWorkflow:
                     return workflow_results
                 
                 # Prepare input for next agent
-                current_input = agent_result["output"]  # Use output string for next agent
+                current_input = agent_result  # Pass full agent result to next agent
                 print(f"✅ {agent.name} completed successfully")
             
             # Set final results

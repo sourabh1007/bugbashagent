@@ -7,15 +7,16 @@
 
 ## 📋 Overview
 
-The **Bug Bash Agent** is an advanced AI-powered code generation system that transforms business requirements into comprehensive, production-ready test code across multiple programming languages. It uses a sophisticated multi-agent workflow with intelligent compilation feedback, selective scenario regeneration, and comprehensive error handling.
+The **Bug Bash Agent** is an advanced AI-powered code generation system that transforms business requirements into comprehensive, production-ready test code across multiple programming languages. It uses a sophisticated **3-agent workflow** with intelligent compilation feedback, selective scenario regeneration, comprehensive test execution, and detailed analysis reporting.
 
 ### 🎯 Key Features
 
-- ✅ **Multi-Language Support**: C#, Python, JavaScript, Java, Go, Rust
+- ✅ **Multi-Language Support**: C#, Python, JavaScript, TypeScript, Java, Go, Rust (complete end-to-end)
 - ✅ **Intelligent Scenario Generation**: 15-25+ comprehensive test scenarios per project
 - ✅ **Selective Retry System**: Only regenerates failed scenarios, preserving working code
 - ✅ **Advanced Error Handling**: Language-specific compilation error parsing and fixing
-- ✅ **Comprehensive Reporting**: Detailed analysis of all attempts, errors, and fixes
+- ✅ **Comprehensive Test Runner**: Automated test execution with AI-powered analysis
+- ✅ **Detailed Reporting**: Multi-level analysis of generation, compilation, and test results
 - ✅ **Prompt Logging**: Complete audit trail of all LLM interactions
 - ✅ **External Prompt Management**: Prompty file system with YAML metadata
 - ✅ **Organized Tool Architecture**: Categorized tool structure for maintainability
@@ -26,11 +27,28 @@ The **Bug Bash Agent** is an advanced AI-powered code generation system that tra
 
 ### 🔄 Multi-Agent Workflow
 
-Active workflow:
+**Complete 3-Agent Pipeline:**
 
-1. **📊 Document Analyzer Agent** → 2. **🛠️ Code Generator Agent**
+1. **📊 Document Analyzer Agent** → 2. **🛠️ Code Generator Agent** → 3. **🧪 Test Runner Agent**
 
-Compilation validation + selective regeneration happen inside the Code Generator (earlier references to a third "Code Executor" stage have been removed).
+Each agent specializes in a specific aspect of the development lifecycle:
+
+#### 📊 Document Analyzer Agent
+- Extracts and structures business requirements into test scenarios
+- Removes duplicates and categorizes scenarios by complexity
+- Provides structured input for code generation
+
+#### 🛠️ Code Generator Agent  
+- Generates complete, compilable code projects
+- Performs selective regeneration for failed scenarios
+- Handles compilation feedback and error correction
+- Creates comprehensive project structures with proper dependencies
+
+#### 🧪 Test Runner Agent
+- Executes tests on generated code across all supported languages
+- Performs AI-powered analysis of test results and failures
+- Generates detailed reports with insights and recommendations
+- Provides quality scoring and improvement suggestions
 
 ### 🔧 Architecture Features
 
@@ -57,8 +75,9 @@ Compilation validation + selective regeneration happen inside the Code Generator
 
 ### 🧠 Agent Responsibilities
 
-1. **📊 Document Analyzer** – Extracts, deduplicates, and structures scenarios.
-2. **🛠️ Code Generator** – Generates code, performs selective regeneration for failed scenarios, and produces detailed reports.
+1. **📊 Document Analyzer** – Extracts, deduplicates, and structures scenarios from business requirements
+2. **🛠️ Code Generator** – Generates code with selective regeneration for failed scenarios and compilation validation
+3. **🧪 Test Runner** – Executes tests, analyzes results with AI, and produces comprehensive quality reports
 
 ## 🚀 Quick Start
 
@@ -112,6 +131,7 @@ LANGCHAIN_TRACING_V2=true
 LANGCHAIN_API_KEY=your_langsmith_api_key_here
 LANGCHAIN_PROJECT=BugBashAgent
 ```
+
 4. **Monitor your runs** at the [LangSmith Dashboard](https://smith.langchain.com/projects)
 
 **LangSmith Features:**
@@ -376,6 +396,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Built with ❤️ using LangChain and Azure OpenAI**
+## 🚀 Built with ❤️ using LangChain and Azure OpenAI
 
-_README updated post-cleanup (2025-09-04)._ 
+_README updated post-cleanup (2025-09-04)_

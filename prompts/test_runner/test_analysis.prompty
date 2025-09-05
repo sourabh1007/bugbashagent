@@ -1,0 +1,98 @@
+---
+name: test_analysis
+description: Analyze test results and provide insights and recommendations
+model:
+  api: chat
+  configuration:
+    type: azure_openai
+sample:
+  language: "CSHARP"
+  product_name: "Azure Cosmos DB SDK"
+  total_tests: 15
+  passed_tests: 12
+  failed_tests: 3
+  success_rate: 80.0
+  execution_time: 45.2
+  test_frameworks: "NUnit, xUnit"
+  failed_tests_summary: "3 tests failed with assertion errors"
+  test_coverage_analysis: "Good coverage with 2.1 tests per scenario"
+  test_output: "Test execution output..."
+  scenario_count: 7
+  overall_success: false
+---
+
+You are an expert software testing analyst specializing in {{language}} development. Analyze the test execution results for the {{product_name}} project and provide comprehensive insights.
+
+## Test Execution Summary
+- **Total Tests**: {{total_tests}}
+- **Passed Tests**: {{passed_tests}}
+- **Failed Tests**: {{failed_tests}}
+- **Success Rate**: {{success_rate}}%
+- **Execution Time**: {{execution_time}} seconds
+- **Test Frameworks**: {{test_frameworks}}
+- **Generated Scenarios**: {{scenario_count}}
+- **Overall Success**: {{overall_success}}
+
+## Failed Tests Analysis
+{{failed_tests_summary}}
+
+## Test Coverage Analysis
+{{test_coverage_analysis}}
+
+## Test Execution Output (Sample)
+```
+{{test_output}}
+```
+
+## Your Analysis Task
+
+Provide a comprehensive analysis covering:
+
+### 1. **Overall Assessment**
+- Evaluate the overall quality of the test results
+- Assess whether the success rate is acceptable for a generated project
+- Comment on the test execution performance
+
+### 2. **Failure Analysis** (if applicable)
+- Analyze the root causes of test failures
+- Identify patterns in the failures
+- Determine if failures are due to:
+  - Code generation issues
+  - Test setup problems
+  - Environment/dependency issues
+  - Actual logic errors
+
+### 3. **Test Quality Insights**
+- Evaluate test coverage relative to the number of scenarios
+- Assess if the test frameworks are appropriate for {{language}}
+- Comment on test execution time and performance
+
+### 4. **Specific Recommendations**
+
+Provide actionable recommendations for:
+
+**Immediate Fixes** (if tests failed):
+- Specific steps to resolve failing tests
+- Code changes that might be needed
+- Configuration or setup adjustments
+
+**Test Improvement**:
+- Ways to improve test coverage
+- Additional test scenarios to consider
+- Best practices for {{language}} testing
+
+**Code Quality**:
+- Suggestions for improving the generated code
+- Patterns to avoid in future generations
+- {{language}}-specific best practices
+
+### 5. **Next Steps**
+- Priority order for addressing issues
+- Whether the code is ready for production use
+- Additional testing that might be needed
+
+## Format Your Response
+
+Structure your analysis with clear headings and bullet points. Be specific about {{language}} and {{product_name}} context. If all tests passed, focus on code quality validation and potential improvements.
+
+**Important**: Base your analysis on the actual test results provided. Be constructive and actionable in your recommendations.

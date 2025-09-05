@@ -20,6 +20,7 @@ from tools.project_generators import (
     CSharpProjectGenerator,
     PythonProjectGenerator,
     JavaScriptProjectGenerator,
+    TypeScriptProjectGenerator,
     JavaProjectGenerator,
     GoProjectGenerator,
     RustProjectGenerator
@@ -174,6 +175,8 @@ class CodeGenerator(BaseAgent):
             'javascript': JavaScriptProjectGenerator(),
             'node.js': JavaScriptProjectGenerator(),
             'js': JavaScriptProjectGenerator(),
+            'typescript': TypeScriptProjectGenerator(),
+            'ts': TypeScriptProjectGenerator(),
             'java': JavaProjectGenerator(),
             'go': GoProjectGenerator(),
             'rust': RustProjectGenerator()
@@ -372,6 +375,9 @@ class CodeGenerator(BaseAgent):
                     analysis_data
                 )
                 
+                # Log that compilation happened during project creation
+                self.log(f"🔨 [Attempt {attempt}] Initial compilation completed during project creation")
+                
             else:
                 # SUBSEQUENT ATTEMPTS: Only fix scenarios with compilation errors
                 self.log(f"🔧 Attempt {attempt}: Fixing ONLY scenarios with compilation errors (selective retry)")
@@ -406,8 +412,11 @@ class CodeGenerator(BaseAgent):
                         project_files, compilation_result, language, project_dir
                     )
             
-            # Get compilation results from project files
-            compilation_result = project_files.get("compilation_result", {})
+            # CRITICAL: Always re-compile after any changes to verify fixes
+            self.log(f"🔨 [Attempt {attempt}] Running compilation to verify changes...")
+            fresh_compilation_result = self._compile_generated_project(project_dir, language)
+            project_files["compilation_result"] = fresh_compilation_result
+            compilation_result = fresh_compilation_result
             
             # Enhanced compilation attempt tracking with detailed error information
             attempt_info = {
@@ -465,6 +474,12 @@ class CodeGenerator(BaseAgent):
                     
                 else:
                     self.log(f"🚫 Maximum compilation attempts ({MAX_COMPILATION_ATTEMPTS}) reached. Returning with compilation errors.")
+        
+        # FINAL COMPILATION CHECK: Ensure we have the most recent compilation status
+        self.log(f"🔨 Final compilation check to confirm current status...")
+        final_compilation_result = self._compile_generated_project(project_dir, language)
+        project_files["compilation_result"] = final_compilation_result
+        compilation_result = final_compilation_result
         
         # All attempts failed - return with compilation errors
         final_result = {
@@ -648,11 +663,18 @@ class CodeGenerator(BaseAgent):
         # Log summary
         success_count = len(results["successful"])
         failure_count = len(results["failed"])
+        total_scenarios = len(scenarios)
         
         self.log(f"🎯 [Attempt {attempt}] Scenario Generation Summary:")
-        self.log(f"  ✅ Successful: {success_count}/{len(scenarios)}")
-        self.log(f"  ❌ Failed: {failure_count}/{len(scenarios)}")
-        self.log(f"  📊 Success Rate: {(success_count/len(scenarios)*100):.1f}%")
+        self.log(f"  ✅ Successful: {success_count}/{total_scenarios}")
+        self.log(f"  ❌ Failed: {failure_count}/{total_scenarios}")
+        
+        # Avoid division by zero
+        if total_scenarios > 0:
+            success_rate = (success_count / total_scenarios * 100)
+            self.log(f"  📊 Success Rate: {success_rate:.1f}%")
+        else:
+            self.log(f"  📊 Success Rate: N/A (no scenarios to process)")
         
         return results
     

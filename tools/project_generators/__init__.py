@@ -8,6 +8,7 @@ from .base_generator import BaseProjectGenerator
 from .csharp_generator import CSharpProjectGenerator
 from .python_generator import PythonProjectGenerator
 from .javascript_generator import JavaScriptProjectGenerator
+from .typescript_generator import TypeScriptProjectGenerator
 from .java_generator import JavaProjectGenerator
 from .go_generator import GoProjectGenerator
 from .rust_generator import RustProjectGenerator
@@ -18,6 +19,7 @@ __all__ = [
     'CSharpProjectGenerator',
     'PythonProjectGenerator',
     'JavaScriptProjectGenerator',
+    'TypeScriptProjectGenerator',
     'JavaProjectGenerator',
     'GoProjectGenerator',
     'RustProjectGenerator',

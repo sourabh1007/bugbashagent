@@ -47,31 +47,6 @@ def get_langsmith_dashboard_url():
         return "https://smith.langchain.com"
 
 
-def check_azure_config():
-    """Check if Azure OpenAI configuration is set up"""
-    missing_configs = get_missing_azure_config()
-    
-    if missing_configs:
-        print("❌ Error: Missing Azure OpenAI configuration!")
-        print("Please set the following in your .env file:")
-        for config_name in missing_configs:
-            print(f"  {config_name}=your_value_here")
-        print("\nExample .env file:")
-        print("AZURE_OPENAI_API_KEY=your_api_key")
-        print("AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/")
-        print("AZURE_OPENAI_DEPLOYMENT_NAME=your-deployment-name")
-        print("LANGCHAIN_API_KEY=your_langsmith_api_key")
-        print("LANGCHAIN_PROJECT=BugBashAgent")
-        sys.exit(1)
-    
-    # Check LangSmith configuration (optional)
-    if LANGCHAIN_API_KEY:
-        print(f"✅ LangSmith configured for project: {LANGCHAIN_PROJECT}")
-        print(f"🔗 Dashboard: {get_langsmith_dashboard_url()}")
-    else:
-        print("⚠️ LangSmith not configured (optional) - set LANGCHAIN_API_KEY for tracing")
-
-
 def get_user_input():
     """Get requirements input from user - supports text input or file path"""
     print("🤖 LangChain Multi-Agent Code Development Workflow")

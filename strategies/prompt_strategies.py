@@ -12,6 +12,7 @@ from .languages import (
     JavaPromptStrategy,
     PythonPromptStrategy,
     JavaScriptPromptStrategy,
+    TypeScriptPromptStrategy,
     GoPromptStrategy,
     RustPromptStrategy
 )
@@ -23,6 +24,7 @@ __all__ = [
     'JavaPromptStrategy', 
     'PythonPromptStrategy',
     'JavaScriptPromptStrategy',
+    'TypeScriptPromptStrategy',
     'GoPromptStrategy',
     'RustPromptStrategy'
 ]

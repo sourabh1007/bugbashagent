@@ -1,0 +1,61 @@
+---
+name: TypeScript Best Practices Sub-Prompt
+description: Language-specific best practices sub-prompt for TypeScript code generation to avoid compilation errors
+inputs:
+  testing_framework:
+    type: string
+    description: The testing framework being used for TypeScript
+---
+
+**TypeScript Specific Best Practices:**
+1. Use explicit type annotations for function parameters and return types
+2. Declare variables with const/let (avoid var) and use proper type annotations
+3. Use interfaces and types for complex object structures
+4. Handle async operations with async/await and proper Promise typing
+5. Check for undefined/null with strict null checks: `if (value !== null && value !== undefined)`
+6. Use proper import/export syntax with ES modules
+7. Initialize arrays/objects with proper typing: `const array: string[] = [];`
+8. Use strict equality (===) not loose equality (==)
+9. Enable strict mode in tsconfig.json for better type safety
+10. Use generic types appropriately: `function getValue<T>(item: T): T`
+11. Properly type function parameters and return values
+12. Use union types for multiple possible types: `string | number`
+13. Implement interfaces correctly with all required properties
+14. Use optional properties with ? when appropriate: `name?: string`
+15. Handle errors with proper typing: `try/catch` blocks with typed error objects
+
+**{{testing_framework}} Framework Guidelines:**
+- Jest: Use describe(), it(), expect().toBe() with TypeScript types
+- Mocha: Use describe(), it() with typed assertion library (chai)
+- Jasmine: Use describe(), it(), expect().toEqual() with proper typing
+
+**TypeScript-Specific Testing:**
+- Mock functions with jest.fn<ReturnType>()
+- Type test doubles properly: `const mockFn: jest.MockedFunction<typeof originalFn>`
+- Use @types packages for testing libraries
+- Test async functions with proper Promise typing
+- Use type assertions sparingly: `value as Type` only when necessary
+
+**Compilation checklist (concise):**
+• Use module-compliant import/export syntax and proper tsconfig.json
+• All variables and functions must have explicit or inferred types
+• Implement all interface properties and method signatures
+• Handle null/undefined cases with strict null checks
+• Use proper generic type constraints where needed
+• Ensure all async functions return Promise<T> types
+• Check that all imported modules have type definitions
+• Verify that all class properties are properly initialized
+• Use proper access modifiers (public, private, protected)
+• Ensure decorator usage follows TypeScript decorator syntax
+
+**Common TypeScript Pitfalls to Avoid:**
+• Missing type definitions for imported libraries
+• Using 'any' type instead of proper typing
+• Forgetting to handle undefined/null in strict null check mode
+• Mixing CommonJS and ES module syntax
+• Not implementing all interface members
+• Using wrong generic type parameters
+• Forgetting async/await with Promise types
+• Incorrect use of type assertions
+• Missing return type annotations for complex functions
+• Not properly typing event handlers and callbacks

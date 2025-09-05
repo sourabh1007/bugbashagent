@@ -10,6 +10,7 @@ from strategies.prompt_strategies import (
     JavaPromptStrategy,
     PythonPromptStrategy,
     JavaScriptPromptStrategy,
+    TypeScriptPromptStrategy,
     GoPromptStrategy,
     RustPromptStrategy
 )
@@ -28,6 +29,8 @@ class PromptStrategyFactory:
             'javascript': JavaScriptPromptStrategy,
             'node.js': JavaScriptPromptStrategy,
             'js': JavaScriptPromptStrategy,
+            'typescript': TypeScriptPromptStrategy,
+            'ts': TypeScriptPromptStrategy,
             'go': GoPromptStrategy,
             'rust': RustPromptStrategy
         }
