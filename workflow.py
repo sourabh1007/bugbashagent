@@ -59,7 +59,11 @@ class AgentWorkflow:
                 if isinstance(agent_result, dict):
                     output_data = agent_result.get("output", {})
                     # For CodeGenerator, compilation attempts might be in the root or in output
-                    compilation_attempts = agent_result.get("compilation_attempts", output_data.get("compilation_attempts", []) if isinstance(output_data, dict) else [])
+                    # Ensure output_data is a dict before calling .get() on it
+                    if isinstance(output_data, dict):
+                        compilation_attempts = agent_result.get("compilation_attempts", output_data.get("compilation_attempts", []))
+                    else:
+                        compilation_attempts = agent_result.get("compilation_attempts", [])
                 else:
                     output_data = agent_result
                     compilation_attempts = []
@@ -197,7 +201,7 @@ class AgentWorkflow:
                 f.write(f"TIMESTAMP: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
                 f.write("=" * 80 + "\n\n")
                 
-                # Extract output data safely
+                # Extract output data safely  
                 if isinstance(agent_result, dict):
                     output_data = agent_result.get("output", {})
                 else:
@@ -207,7 +211,16 @@ class AgentWorkflow:
                 if isinstance(output_data, dict) and "output" in output_data:
                     test_output = output_data["output"]
                     execution_summary = output_data.get("execution_summary", {})
-                    
+                elif isinstance(agent_result, dict) and "output" in agent_result:
+                    # Check if the test data is in the agent_result instead
+                    test_output = agent_result["output"]
+                    execution_summary = agent_result.get("execution_summary", {})
+                else:
+                    test_output = None
+                    execution_summary = {}
+                
+                # Only proceed with test analysis if we have valid test output
+                if test_output is not None:
                     f.write("🧪 TEST EXECUTION ANALYSIS\n")
                     f.write("=" * 50 + "\n\n")
                     
@@ -220,7 +233,7 @@ class AgentWorkflow:
                     f.write("\n")
                     
                     # Test analysis section
-                    if "test_analysis" in test_output:
+                    if isinstance(test_output, dict) and "test_analysis" in test_output:
                         test_analysis = test_output["test_analysis"]
                         f.write("🤖 AI ANALYSIS:\n")
                         f.write("-" * 30 + "\n")

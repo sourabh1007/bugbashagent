@@ -46,6 +46,27 @@ class TestRunner(BaseAgent):
             'go': self._run_go_tests,
             'rust': self._run_rust_tests
         }
+    
+    def _normalize_language(self, language):
+        """Normalize language names to standard format"""
+        if not language:
+            return "python"  # Default fallback
+        
+        # Language mappings for common variations
+        language_mappings = {
+            "c#": "csharp",
+            "cs": "csharp", 
+            "c-sharp": "csharp",
+            "js": "javascript",
+            "ts": "typescript",
+            "py": "python",
+            "go": "go",
+            "golang": "go",
+            "rs": "rust"
+        }
+        
+        normalized = language.lower().strip()
+        return language_mappings.get(normalized, normalized)
         
     def execute(self, input_data: Any) -> Dict[str, Any]:
         """
@@ -62,15 +83,43 @@ class TestRunner(BaseAgent):
         try:
             self.log("🧪 Starting Test Runner Agent...")
             
-            # Handle different input types (similar to CodeGenerator)
+            # Initialize validation issues list to track problems without failing
+            validation_issues = []
+            
+            # Handle different input types with robust error handling
             if isinstance(input_data, dict):
-                parsed_data = input_data
+                # Check if this is a full agent result (from workflow) or direct data
+                if "agent" in input_data and "output" in input_data and "status" in input_data:
+                    # This is a full agent result from the workflow
+                    if input_data["status"] != "success":
+                        validation_issues.append(f"Previous agent ({input_data.get('agent', 'Unknown')}) failed: {input_data.get('error', 'Unknown error')}")
+                        # Continue processing with available data instead of failing
+                    
+                    # For code generator results, the important data is at the root level, not in "output"
+                    # The "output" field contains consolidated content (string), but we need the other fields
+                    self.log(f"📥 Received input from agent: {input_data.get('agent', 'Unknown')}")
+                    
+                    # Extract the data we need from the root level of the code generator result
+                    parsed_data = {
+                        "project_files": input_data.get("project_files", {}),
+                        "language": input_data.get("language", "python"),
+                        "product_name": input_data.get("product_name", "Unknown"),
+                        "code_path": input_data.get("code_path", ""),
+                        "scenario_results": input_data.get("scenario_results", {}),
+                        "consolidated_content": input_data.get("output", ""),  # This is the consolidated markdown
+                        "compilation_attempts": input_data.get("compilation_attempts", []),
+                        "generation_mode": input_data.get("generation_mode", "unknown")
+                    }
+                else:
+                    # This is direct data
+                    parsed_data = input_data
             elif isinstance(input_data, str):
                 try:
                     parsed_data = json.loads(input_data)
                 except json.JSONDecodeError:
                     # If it's not JSON, create a minimal structure for testing
                     self.log("⚠️ Input is not JSON, treating as raw output from CodeGenerator")
+                    validation_issues.append("Input is not valid JSON - using fallback parsing")
                     # Extract information from the string if possible
                     parsed_data = {
                         "language": "python",  # Default to python as fallback
@@ -80,55 +129,178 @@ class TestRunner(BaseAgent):
                         "raw_output": input_data  # Store the raw input for potential parsing
                     }
             else:
-                raise ValueError("Input data must be either a dictionary or string")
+                validation_issues.append(f"Input data must be either a dictionary or string, got {type(input_data)}")
+                # Create fallback structure
+                parsed_data = {
+                    "language": "python",
+                    "product_name": "Unknown",
+                    "code_path": "",
+                    "scenario_results": {},
+                    "raw_data": str(input_data)
+                }
             
-            # Extract input parameters with safe defaults
+            # Ensure parsed_data is a dictionary before proceeding
+            if not isinstance(parsed_data, dict):
+                self.log(f"⚠️ Parsed data is not a dictionary, got {type(parsed_data)}. Creating fallback structure.")
+                validation_issues.append(f"Parsed data is not a dictionary, got {type(parsed_data)}")
+                parsed_data = {
+                    "language": "python",
+                    "product_name": "Unknown", 
+                    "code_path": "",
+                    "scenario_results": {},
+                    "raw_data": str(parsed_data)
+                }
+            
+            # Extract input parameters with safe defaults and validation
             project_files = parsed_data.get("project_files", {})
-            language = parsed_data.get("language", "").lower()
+            raw_language = parsed_data.get("language", "python")
             product_name = parsed_data.get("product_name", "Unknown")
             code_path = parsed_data.get("code_path", "")
             scenario_results = parsed_data.get("scenario_results", {})
             
-            # Validate inputs
+            # Normalize language names using the dedicated method
+            language = self._normalize_language(raw_language)
+            if language != raw_language.lower().strip():
+                self.log(f"🔄 Normalized language '{raw_language}' to '{language}'")
+            
+            # Validate inputs with non-failing approach
             if not code_path or not os.path.exists(code_path):
-                raise ValueError(f"Invalid code path: {code_path}")
+                validation_issues.append(f"Invalid or missing code path: {code_path}")
+                # Try to find a suitable code path
+                if not code_path:
+                    code_path = os.getcwd()
+                    self.log(f"⚠️ Using current directory as code path: {code_path}")
                 
             if language not in self.test_executors:
-                raise ValueError(f"Unsupported language: {language}")
+                validation_issues.append(f"Unsupported language: {language}")
+                # Default to csharp if we detect C# files, otherwise python
+                try:
+                    if code_path and os.path.exists(code_path):
+                        files_in_path = os.listdir(code_path)
+                        if any(f.endswith('.cs') for f in files_in_path if os.path.isfile(os.path.join(code_path, f))):
+                            language = "csharp"
+                            self.log(f"⚠️ Detected C# files, using csharp language")
+                        elif any(f.endswith('.py') for f in files_in_path if os.path.isfile(os.path.join(code_path, f))):
+                            language = "python"
+                            self.log(f"⚠️ Detected Python files, using python language")
+                        elif any(f.endswith('.js') for f in files_in_path if os.path.isfile(os.path.join(code_path, f))):
+                            language = "javascript"
+                            self.log(f"⚠️ Detected JavaScript files, using javascript language")
+                        elif any(f.endswith('.ts') for f in files_in_path if os.path.isfile(os.path.join(code_path, f))):
+                            language = "typescript"
+                            self.log(f"⚠️ Detected TypeScript files, using typescript language")
+                        elif any(f.endswith('.java') for f in files_in_path if os.path.isfile(os.path.join(code_path, f))):
+                            language = "java"
+                            self.log(f"⚠️ Detected Java files, using java language")
+                        elif any(f.endswith('.go') for f in files_in_path if os.path.isfile(os.path.join(code_path, f))):
+                            language = "go"
+                            self.log(f"⚠️ Detected Go files, using go language")
+                        elif any(f.endswith('.rs') for f in files_in_path if os.path.isfile(os.path.join(code_path, f))):
+                            language = "rust"
+                            self.log(f"⚠️ Detected Rust files, using rust language")
+                        else:
+                            language = "python"
+                            self.log(f"⚠️ No specific language files detected, defaulting to python")
+                    else:
+                        language = "python"
+                        self.log(f"⚠️ Code path invalid, defaulting to python")
+                except Exception as e:
+                    language = "python"
+                    self.log(f"⚠️ Error detecting language from files: {e}, defaulting to python")
+                    validation_issues.append(f"Language detection error: {e}")
             
             self.log(f"📋 Test execution details:")
             self.log(f"  - Language: {language.upper()}")
             self.log(f"  - Product: {product_name}")
             self.log(f"  - Code Path: {code_path}")
             self.log(f"  - Scenarios: {len(scenario_results.get('successful', []))} successful, {len(scenario_results.get('failed', []))} failed")
+            if validation_issues:
+                self.log(f"  - Validation Issues: {len(validation_issues)} issues detected")
+                for issue in validation_issues:
+                    self.log(f"    ⚠️ {issue}")
             
-            # Step 1: Discover and analyze test structure
-            test_discovery = self._discover_tests(code_path, language)
-            self.log(f"🔍 Discovered {test_discovery['total_tests']} tests in {test_discovery['test_files_count']} files")
+            # Step 1: Discover and analyze test structure (with robust error handling)
+            try:
+                test_discovery = self._discover_tests(code_path, language)
+                self.log(f"🔍 Discovered {test_discovery['total_tests']} tests in {test_discovery['test_files_count']} files")
+            except Exception as e:
+                validation_issues.append(f"Test discovery failed: {str(e)}")
+                self.log(f"⚠️ Test discovery failed: {str(e)}")
+                test_discovery = {
+                    "test_files": [],
+                    "test_files_count": 0,
+                    "total_tests": 0,
+                    "test_structure": {},
+                    "test_frameworks": ["unknown"],
+                    "discovery_error": str(e)
+                }
             
-            # Step 2: Execute tests
-            test_results = self._execute_tests(code_path, language, test_discovery)
+            # Step 2: Execute tests (with robust error handling)
+            try:
+                test_results = self._execute_tests(code_path, language, test_discovery)
+            except Exception as e:
+                validation_issues.append(f"Test execution failed: {str(e)}")
+                self.log(f"⚠️ Test execution failed: {str(e)}")
+                test_results = {
+                    "success": False,
+                    "total_tests": 0,
+                    "passed_tests": 0,
+                    "failed_tests": 0,
+                    "success_rate": 0.0,
+                    "execution_time": 0.0,
+                    "test_output": f"Test execution failed: {str(e)}",
+                    "execution_error": str(e)
+                }
             
-            # Step 3: Analyze results with LLM
-            test_analysis = self._analyze_test_results_with_llm(
-                test_results, test_discovery, language, product_name, scenario_results
-            )
+            # Step 3: Analyze results with LLM (with robust error handling)
+            try:
+                test_analysis = self._analyze_test_results_with_llm(
+                    test_results, test_discovery, language, product_name, scenario_results
+                )
+            except Exception as e:
+                validation_issues.append(f"LLM analysis failed: {str(e)}")
+                self.log(f"⚠️ LLM analysis failed: {str(e)}")
+                test_analysis = {
+                    "analysis_summary": f"Analysis failed due to error: {str(e)}",
+                    "test_quality_assessment": "Unable to assess due to analysis failure",
+                    "failed_tests_analysis": [],
+                    "recommendations": [
+                        f"Address analysis failure: {str(e)}",
+                        "Review test setup and configuration",
+                        "Check input data validity"
+                    ],
+                    "scenario_coverage": {},
+                    "analysis_error": str(e)
+                }
             
-            # Step 4: Generate comprehensive report
-            comprehensive_report = self._generate_comprehensive_report(
-                test_results, test_analysis, test_discovery, language, product_name, code_path
-            )
+            # Step 4: Generate comprehensive report (always succeeds with fallback)
+            try:
+                comprehensive_report = self._generate_comprehensive_report(
+                    test_results, test_analysis, test_discovery, language, product_name, code_path
+                )
+            except Exception as e:
+                validation_issues.append(f"Report generation failed: {str(e)}")
+                self.log(f"⚠️ Report generation failed: {str(e)}")
+                comprehensive_report = self._generate_fallback_report(
+                    test_results, test_analysis, test_discovery, language, product_name, code_path, validation_issues, str(e)
+                )
             
-            # Step 5: Save results
-            self._save_test_results(code_path, {
-                "test_results": test_results,
-                "test_analysis": test_analysis,
-                "comprehensive_report": comprehensive_report,
-                "test_discovery": test_discovery
-            })
+            # Step 5: Save results (with error handling)
+            try:
+                self._save_test_results(code_path, {
+                    "test_results": test_results,
+                    "test_analysis": test_analysis,
+                    "comprehensive_report": comprehensive_report,
+                    "test_discovery": test_discovery,
+                    "validation_issues": validation_issues
+                })
+            except Exception as e:
+                self.log(f"⚠️ Failed to save results: {str(e)}")
+                validation_issues.append(f"Result saving failed: {str(e)}")
             
-            # Determine overall status
-            overall_status = "success" if test_results.get("success", False) else "failure"
+            # Always return success with detailed analysis (including failures)
+            # This ensures the workflow continues even if tests fail
+            overall_status = "success"  # Always success - failures are captured in the report
             
             return {
                 "agent": self.name,
@@ -137,37 +309,83 @@ class TestRunner(BaseAgent):
                     "test_results": test_results,
                     "test_analysis": test_analysis,
                     "comprehensive_report": comprehensive_report,
-                    "test_discovery": test_discovery
+                    "test_discovery": test_discovery,
+                    "validation_issues": validation_issues
                 },
                 "status": overall_status,
                 "test_execution_path": code_path,
                 "language": language,
                 "product_name": product_name,
+                "validation_issues": validation_issues,
                 "execution_summary": {
                     "total_tests": test_results.get("total_tests", 0),
                     "passed_tests": test_results.get("passed_tests", 0),
                     "failed_tests": test_results.get("failed_tests", 0),
                     "success_rate": test_results.get("success_rate", 0.0),
-                    "execution_time": test_results.get("execution_time", 0.0)
+                    "execution_time": test_results.get("execution_time", 0.0),
+                    "validation_issues_count": len(validation_issues),
+                    "workflow_success": True  # Workflow always succeeds, test failures are analyzed
                 }
             }
             
         except Exception as e:
-            error_msg = f"Test Runner Agent failed: {str(e)}"
+            error_msg = f"Test Runner Agent encountered an error: {str(e)}"
             self.log(f"❌ {error_msg}")
             
+            # Even in case of major failure, return a detailed analysis
             return {
                 "agent": self.name,
                 "input": input_data,
-                "output": {},
-                "status": "error",
-                "error": error_msg,
+                "output": {
+                    "test_results": {
+                        "success": False,
+                        "total_tests": 0,
+                        "passed_tests": 0,
+                        "failed_tests": 0,
+                        "success_rate": 0.0,
+                        "execution_time": 0.0,
+                        "test_output": f"Critical failure: {str(e)}",
+                        "critical_error": str(e)
+                    },
+                    "test_analysis": {
+                        "analysis_summary": f"Critical failure prevented analysis: {str(e)}",
+                        "test_quality_assessment": "Unable to assess due to critical failure",
+                        "failed_tests_analysis": [],
+                        "recommendations": [
+                            f"Address critical failure: {str(e)}",
+                            "Review input data structure and validity",
+                            "Check test environment setup",
+                            "Verify code path and language configuration"
+                        ],
+                        "scenario_coverage": {},
+                        "critical_error": str(e)
+                    },
+                    "comprehensive_report": f"# Test Runner Critical Failure Report\n\n**Error:** {str(e)}\n\n**Recommendations:**\n- Review input data structure\n- Verify test environment setup\n- Check code path validity\n- Ensure language support is available",
+                    "test_discovery": {
+                        "test_files": [],
+                        "test_files_count": 0,
+                        "total_tests": 0,
+                        "test_structure": {},
+                        "test_frameworks": ["unknown"],
+                        "critical_error": str(e)
+                    },
+                    "validation_issues": [f"Critical failure: {str(e)}"]
+                },
+                "status": "success",  # Always return success to continue workflow
+                "error_details": error_msg,
+                "test_execution_path": getattr(locals(), 'code_path', 'unknown'),
+                "language": getattr(locals(), 'language', 'unknown'),
+                "product_name": getattr(locals(), 'product_name', 'unknown'),
+                "validation_issues": [f"Critical failure: {str(e)}"],
                 "execution_summary": {
                     "total_tests": 0,
                     "passed_tests": 0,
                     "failed_tests": 0,
                     "success_rate": 0.0,
-                    "execution_time": 0.0
+                    "execution_time": 0.0,
+                    "validation_issues_count": 1,
+                    "workflow_success": True,  # Workflow continues despite test failure
+                    "critical_failure": True
                 }
             }
     
@@ -1154,4 +1372,214 @@ class TestRunner(BaseAgent):
             "failure_analysis": self._create_failure_analysis(test_results),
             "test_quality_score": self._calculate_test_quality_score(test_results, test_discovery)
         }
+
+    def _generate_comprehensive_report(self, test_results: Dict[str, Any], test_analysis: Dict[str, Any], 
+                                     test_discovery: Dict[str, Any], language: str, product_name: str, code_path: str) -> str:
+        """Generate a comprehensive test report with detailed analysis"""
+        try:
+            success_rate = test_results.get("success_rate", 0)
+            total_tests = test_results.get("total_tests", 0)
+            passed_tests = test_results.get("passed_tests", 0)
+            failed_tests = test_results.get("failed_tests", 0)
+            execution_time = test_results.get("execution_time", 0)
+            
+            # Status emoji and summary
+            status_emoji = "✅" if success_rate >= 0.8 else "⚠️" if success_rate >= 0.5 else "❌"
+            overall_status = "Excellent" if success_rate >= 0.8 else "Needs Attention" if success_rate >= 0.5 else "Critical Issues"
+            
+            report = f"""# Test Execution Report: {product_name}
+
+## 📊 Executive Summary
+**Language:** {language.upper()}  
+**Status:** {status_emoji} {overall_status}  
+**Success Rate:** {success_rate:.1%}  
+**Execution Time:** {execution_time:.2f}s  
+
+## 🔢 Test Statistics
+- **Total Tests:** {total_tests}
+- **Passed:** {passed_tests} ✅
+- **Failed:** {failed_tests} ❌
+- **Test Files:** {test_discovery.get('test_files_count', 0)}
+- **Frameworks:** {', '.join(test_discovery.get('test_frameworks', ['Unknown']))}
+
+## 🎯 Test Quality Score: {test_analysis.get('test_quality_score', 0):.2f}/1.00
+
+## 📋 Key Insights
+{chr(10).join(['- ' + insight for insight in test_analysis.get('key_insights', ['No insights available'])])}
+
+## 💡 Recommendations
+{chr(10).join(['- ' + rec for rec in test_analysis.get('recommendations', ['No recommendations available'])])}
+"""
+
+            # Add failure analysis if there are failures
+            if failed_tests > 0:
+                failure_analysis = test_analysis.get('failure_analysis', {})
+                report += f"""
+## ❌ Failure Analysis
+- **Total Failures:** {failure_analysis.get('total_failures', failed_tests)}
+- **Failure Patterns:** {failure_analysis.get('failure_patterns', {})}
+- **Most Common Issue:** {failure_analysis.get('most_common_failure', 'Unknown')}
+
+### Failed Test Details
+"""
+                # Add individual failed test details
+                detailed_results = test_results.get("detailed_results", [])
+                failed_test_details = [test for test in detailed_results if test.get("status") == "failed"]
+                
+                for i, test in enumerate(failed_test_details[:5], 1):  # Show first 5 failures
+                    report += f"""
+**{i}. {test.get('name', 'Unknown Test')}**
+```
+{test.get('error', 'No error details available')[:300]}{'...' if len(test.get('error', '')) > 300 else ''}
+```
+"""
+                
+                if len(failed_test_details) > 5:
+                    report += f"\n*... and {len(failed_test_details) - 5} more failures (check full test output for details)*\n"
+
+            # Add LLM analysis
+            if test_analysis.get('llm_analysis'):
+                report += f"""
+## 🤖 Detailed Analysis
+{test_analysis['llm_analysis']}
+"""
+
+            # Add technical details
+            report += f"""
+## 🔧 Technical Details
+- **Code Path:** `{code_path}`
+- **Analysis Model:** {test_analysis.get('analysis_model', 'Unknown')}
+- **Timestamp:** {test_analysis.get('analysis_timestamp', 'Unknown')}
+- **Test Discovery:** {test_discovery.get('test_files_count', 0)} files, {total_tests} tests
+
+---
+*Report generated by Test Runner Agent*
+"""
+            
+            return report
+            
+        except Exception as e:
+            self.log(f"⚠️ Comprehensive report generation failed: {str(e)}")
+            return self._generate_fallback_report(test_results, test_analysis, test_discovery, language, product_name, code_path, [], str(e))
+
+    def _generate_fallback_report(self, test_results: Dict[str, Any], test_analysis: Dict[str, Any], 
+                                test_discovery: Dict[str, Any], language: str, product_name: str, code_path: str,
+                                validation_issues: List[str], error_context: str = None) -> str:
+        """Generate a fallback report when comprehensive report generation fails"""
+        
+        # Extract basic info with safe defaults
+        total_tests = test_results.get("total_tests", 0)
+        passed_tests = test_results.get("passed_tests", 0)
+        failed_tests = test_results.get("failed_tests", 0)
+        success_rate = test_results.get("success_rate", 0.0)
+        execution_time = test_results.get("execution_time", 0.0)
+        
+        # Determine status
+        if total_tests == 0:
+            status = "⚠️ No Tests Found"
+        elif failed_tests == 0:
+            status = "✅ All Tests Passed"
+        else:
+            status = f"❌ {failed_tests} Tests Failed"
+        
+        report = f"""# Test Runner Fallback Report: {product_name}
+
+## 📊 Basic Summary
+**Language:** {language.upper()}  
+**Status:** {status}  
+**Success Rate:** {success_rate:.1%}  
+**Execution Time:** {execution_time:.2f}s  
+
+## 🔢 Test Statistics
+- **Total Tests:** {total_tests}
+- **Passed:** {passed_tests} ✅
+- **Failed:** {failed_tests} ❌
+- **Test Files Found:** {test_discovery.get('test_files_count', 0)}
+
+## ⚠️ Issues Encountered
+"""
+        
+        # Add validation issues
+        if validation_issues:
+            report += "### Validation Issues:\n"
+            for issue in validation_issues:
+                report += f"- {issue}\n"
+            report += "\n"
+        
+        # Add error context if provided
+        if error_context:
+            report += f"### Report Generation Error:\n- {error_context}\n\n"
+        
+        # Add basic recommendations
+        report += """## 💡 Basic Recommendations
+- Review validation issues listed above
+- Ensure test environment is properly configured
+- Verify input data structure and code path validity
+- Check language-specific test framework setup
+"""
+        
+        # Add failure details if available
+        if failed_tests > 0:
+            report += f"""
+## ❌ Test Failures Summary
+{failed_tests} out of {total_tests} tests failed.
+
+### Possible Causes:
+- Code compilation issues
+- Missing dependencies or test setup
+- Logic errors in generated scenarios
+- Environment configuration problems
+"""
+        
+        # Add test output if available
+        test_output = test_results.get("test_output", "")
+        if test_output:
+            truncated_output = test_output[:1000] + "..." if len(test_output) > 1000 else test_output
+            report += f"""
+## 📋 Test Output (Truncated)
+```
+{truncated_output}
+```
+"""
+        
+        report += f"""
+## 🔧 Technical Details
+- **Code Path:** `{code_path}`
+- **Report Type:** Fallback Report
+- **Timestamp:** {datetime.now().isoformat()}
+- **Validation Issues:** {len(validation_issues)}
+
+---
+*Fallback report generated due to analysis limitations*
+"""
+        
+        return report
+
+    def _save_test_results(self, code_path: str, results: Dict[str, Any]) -> None:
+        """Save test results to a file for later analysis"""
+        try:
+            import json
+            results_file = os.path.join(code_path, "test_results.json")
+            
+            # Convert datetime objects to strings for JSON serialization
+            serializable_results = self._make_json_serializable(results)
+            
+            with open(results_file, 'w', encoding='utf-8') as f:
+                json.dump(serializable_results, f, indent=2, ensure_ascii=False)
+            
+            self.log(f"💾 Test results saved to: {results_file}")
+            
+        except Exception as e:
+            self.log(f"⚠️ Failed to save test results: {str(e)}")
+
+    def _make_json_serializable(self, obj):
+        """Convert objects to JSON serializable format"""
+        if isinstance(obj, dict):
+            return {key: self._make_json_serializable(value) for key, value in obj.items()}
+        elif isinstance(obj, list):
+            return [self._make_json_serializable(item) for item in obj]
+        elif hasattr(obj, 'isoformat'):  # datetime objects
+            return obj.isoformat()
+        else:
+            return obj
 

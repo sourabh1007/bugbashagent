@@ -270,7 +270,16 @@ class CodeGenerator(BaseAgent):
         try:
             # Parse the input from DocumentAnalyzer
             if isinstance(input_data, dict):
-                analysis_data = input_data
+                # Check if this is a full agent result (from workflow) or direct analysis data
+                if "agent" in input_data and "output" in input_data and "status" in input_data:
+                    # This is a full agent result from the workflow
+                    if input_data["status"] != "success":
+                        raise ValueError(f"Previous agent ({input_data.get('agent', 'Unknown')}) failed: {input_data.get('error', 'Unknown error')}")
+                    analysis_data = input_data["output"]
+                    self.log(f"📥 Received input from agent: {input_data.get('agent', 'Unknown')}")
+                else:
+                    # This is direct analysis data
+                    analysis_data = input_data
             elif isinstance(input_data, str):
                 try:
                     analysis_data = json.loads(input_data)
@@ -3106,6 +3115,8 @@ class {class_name}Test {{
         scenarios_with_errors = []
         scenario_error_map = {}
         
+        self.log(f"🔍 Analyzing {len(detailed_errors)} compilation errors to identify problematic scenarios...")
+        
         # Parse compilation errors and map them to scenarios
         for error in detailed_errors:
             scenario_info = self._parse_compilation_error_for_scenario(error, scenarios, project_dir, language)
@@ -3117,7 +3128,7 @@ class {class_name}Test {{
                     scenario_error_map[scenario_name] = {
                         "scenario_name": scenario_name,
                         "scenario_index": scenario_index,
-                        "scenario_data": scenarios[scenario_index] if scenario_index < len(scenarios) else None,
+                        "scenario_data": scenarios[scenario_index] if scenario_index >= 0 and scenario_index < len(scenarios) else None,
                         "errors": [],
                         "error_categories": set(),
                         "files_affected": set()
@@ -3127,13 +3138,23 @@ class {class_name}Test {{
                 scenario_error_map[scenario_name]["error_categories"].add(scenario_info.get("category", "unknown"))
                 if "file_path" in scenario_info:
                     scenario_error_map[scenario_name]["files_affected"].add(scenario_info["file_path"])
+            else:
+                # If we can't map to a specific scenario, log it for debugging
+                self.log(f"⚠️ Could not map error to scenario: {error[:100]}...")
         
-        # Convert to list and finalize
-        for scenario_name, info in scenario_error_map.items():
-            info["error_categories"] = list(info["error_categories"])
-            info["files_affected"] = list(info["files_affected"])
-            info["error_count"] = len(info["errors"])
-            scenarios_with_errors.append(info)
+        # If no specific scenarios were identified but we have errors, apply a fallback strategy
+        if not scenario_error_map and detailed_errors:
+            self.log(f"🔄 No specific scenarios identified from errors, applying fallback strategy...")
+            scenarios_with_errors = self._fallback_scenario_error_identification(
+                detailed_errors, scenarios, project_dir, language
+            )
+        else:
+            # Convert to list and finalize
+            for scenario_name, info in scenario_error_map.items():
+                info["error_categories"] = list(info["error_categories"])
+                info["files_affected"] = list(info["files_affected"])
+                info["error_count"] = len(info["errors"])
+                scenarios_with_errors.append(info)
         
         self.log(f"🎯 Identified {len(scenarios_with_errors)} specific scenarios with compilation errors")
         for scenario_info in scenarios_with_errors:
@@ -3172,13 +3193,53 @@ class {class_name}Test {{
                 }
         
         elif language.lower() == "python":
-            # Python error format: File "ScenarioNameTest.py", line X
+            # Python error formats can vary, try multiple patterns
             import re
+            
+            # Pattern 1: File "filename.py", line X (standard Python syntax error)
             match = re.search(r'File "([^"]+\.py)", line \d+', error)
             if match:
                 file_path = match.group(1)
                 file_name = os.path.basename(file_path)
                 scenario_name = file_name.replace("Test.py", "").replace("_test.py", "").replace(".py", "")
+                scenario_index = self._find_scenario_index_by_name(scenario_name, scenarios)
+                
+                return {
+                    "file_path": file_path,
+                    "scenario_name": scenario_name,
+                    "scenario_index": scenario_index,
+                    "error": error,
+                    "category": self._categorize_error(error)
+                }
+            
+            # Pattern 2: File path with "No such file or directory" (our current issue)
+            match = re.search(r'No such file or directory: \'([^\']+\.py)\'', error)
+            if match:
+                file_path = match.group(1)
+                file_name = os.path.basename(file_path)
+                scenario_name = file_name.replace("Test.py", "").replace("_test.py", "").replace(".py", "")
+                scenario_index = self._find_scenario_index_by_name(scenario_name, scenarios)
+                
+                return {
+                    "file_path": file_path,
+                    "scenario_name": scenario_name,
+                    "scenario_index": scenario_index,
+                    "error": error,
+                    "category": "file_not_found"
+                }
+            
+            # Pattern 3: Extract from any file path mentioned in the error
+            match = re.search(r'([A-Za-z][A-Za-z0-9]*Test)\.py', error)
+            if match:
+                scenario_name = match.group(1).replace("Test", "")
+                scenario_index = self._find_scenario_index_by_name(scenario_name, scenarios)
+                
+                return {
+                    "scenario_name": scenario_name,
+                    "scenario_index": scenario_index,
+                    "error": error,
+                    "category": self._categorize_error(error)
+                }
                 
                 # Find the scenario index in the original scenarios list
                 scenario_index = self._find_scenario_index_by_name(scenario_name, scenarios)
@@ -3211,6 +3272,71 @@ class {class_name}Test {{
                 return i
         
         return -1  # Not found
+
+    def _fallback_scenario_error_identification(self, detailed_errors: List[str], scenarios: list, 
+                                              project_dir: str, language: str) -> List[Dict[str, Any]]:
+        """
+        Fallback strategy when specific error-to-scenario mapping fails.
+        This treats all scenarios as potentially having errors and groups them for regeneration.
+        """
+        self.log(f"🔄 Using fallback strategy: marking problematic scenarios based on error patterns...")
+        
+        scenarios_with_errors = []
+        
+        # For file not found errors, try to identify which scenarios might be affected
+        file_errors = []
+        syntax_errors = []
+        
+        for error in detailed_errors:
+            if "No such file or directory" in error or "cannot find" in error.lower():
+                file_errors.append(error)
+            else:
+                syntax_errors.append(error)
+        
+        # If we have file errors, it might be a systemic issue affecting multiple scenarios
+        if file_errors:
+            self.log(f"📁 Found {len(file_errors)} file-related errors, may affect multiple scenarios")
+            
+            # Group scenarios for batch regeneration - use first few scenarios as representatives
+            num_scenarios_to_fix = min(len(scenarios), max(3, len(scenarios) // 2))
+            for i in range(num_scenarios_to_fix):
+                scenario = scenarios[i]
+                scenario_name = self._get_scenario_name(scenario)
+                
+                scenarios_with_errors.append({
+                    "scenario_name": scenario_name,
+                    "scenario_index": i,
+                    "scenario_data": scenario,
+                    "errors": file_errors,
+                    "error_categories": ["file_not_found"],
+                    "files_affected": [],
+                    "error_count": len(file_errors),
+                    "fallback_reason": "systemic_file_errors"
+                })
+        
+        # If we have syntax errors, they might be affecting generated code
+        if syntax_errors and not scenarios_with_errors:
+            self.log(f"🐛 Found {len(syntax_errors)} syntax errors, affecting code generation")
+            
+            # Mark first few scenarios for regeneration
+            num_scenarios_to_fix = min(len(scenarios), 3)
+            for i in range(num_scenarios_to_fix):
+                scenario = scenarios[i]
+                scenario_name = self._get_scenario_name(scenario)
+                
+                scenarios_with_errors.append({
+                    "scenario_name": scenario_name,
+                    "scenario_index": i,
+                    "scenario_data": scenario,
+                    "errors": syntax_errors,
+                    "error_categories": ["syntax_error"],
+                    "files_affected": [],
+                    "error_count": len(syntax_errors),
+                    "fallback_reason": "syntax_errors_detected"
+                })
+        
+        self.log(f"🎯 Fallback strategy identified {len(scenarios_with_errors)} scenarios for regeneration")
+        return scenarios_with_errors
 
     def _regenerate_only_failed_scenarios(self, scenarios_with_errors: List[Dict[str, Any]], 
                                         original_scenario_results: Dict[str, Any], language: str, 

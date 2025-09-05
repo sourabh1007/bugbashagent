@@ -213,14 +213,60 @@ class CodeCompiler:
         compile_command = config['compile_command']
         
         try:
-            # Change to project directory and run compilation
-            result = subprocess.run(
-                compile_command.split(),
-                cwd=project_dir,
-                capture_output=True,
-                text=True,
-                timeout=60  # 1 minute timeout
-            )
+            # Special handling for Python - need to specify files
+            if language.lower() == 'python':
+                python_files = []
+                for root, dirs, files in os.walk(project_dir):
+                    for file in files:
+                        if file.endswith('.py') and not file.startswith('__'):
+                            # Use relative path from project_dir
+                            rel_path = os.path.relpath(os.path.join(root, file), project_dir)
+                            python_files.append(rel_path)
+                
+                if python_files:
+                    # Compile each Python file individually
+                    all_results = []
+                    combined_stdout = ""
+                    combined_stderr = ""
+                    all_success = True
+                    
+                    for py_file in python_files:
+                        cmd = ['python', '-m', 'py_compile', py_file]
+                        result = subprocess.run(
+                            cmd,
+                            cwd=project_dir,
+                            capture_output=True,
+                            text=True,
+                            timeout=60
+                        )
+                        all_results.append(result)
+                        combined_stdout += result.stdout
+                        combined_stderr += result.stderr
+                        if result.returncode != 0:
+                            all_success = False
+                    
+                    # Use the combined results
+                    result = type('obj', (object,), {
+                        'returncode': 0 if all_success else 1,
+                        'stdout': combined_stdout,
+                        'stderr': combined_stderr
+                    })()
+                else:
+                    # No Python files found, treat as success
+                    result = type('obj', (object,), {
+                        'returncode': 0,
+                        'stdout': "No Python files found to compile",
+                        'stderr': ""
+                    })()
+            else:
+                # Standard compilation for other languages
+                result = subprocess.run(
+                    compile_command.split(),
+                    cwd=project_dir,
+                    capture_output=True,
+                    text=True,
+                    timeout=60  # 1 minute timeout
+                )
             
             success = result.returncode == 0
             

@@ -1,34 +1,42 @@
+# Environment files
 .env
+
+# Output directories
 workflow_outputs*/
+
+# Python cache and compiled files
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+.pytest_cache/
 
 # VS Code cache and temp files
 .vscode/
 *.code-workspace
 .history/
 
-# Temporary files
+# Temporary and test files
 *.tmp
 *.temp
+test_*.py
+*_test.py
+*test*.py
+verification_*.py
+validation_*.py
+fix_*.py
+final_*.py
 
-# Old directories that should not be regenerated
-config/
-docs/
-examples/
-old/
-backup/
-
-# Summary and documentation files that get regenerated
+# Summary and documentation files (auto-generated)
 *_SUMMARY.md
+*_FIX*.md
 ENHANCED_*.md
-COSMOSDB_*.md
-PACKAGE_*.md
+TEST_RUNNER_*.md
+README_NEW.md
 
 # Jupyter notebook checkpoints
 .ipynb_checkpoints/
 
-# Cleanup script (don't commit)
+# Cleanup scripts
 cleanup.ps1
+cleanup.py
