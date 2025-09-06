@@ -51,6 +51,13 @@ class CodeCompiler:
                 'test_command': 'npm test',
                 'required_files': []
             },
+            'typescript': {
+                'file_extension': '.ts',
+                'project_file': 'package.json',
+                'compile_command': 'npx tsc --noEmit',
+                'test_command': 'npm test',
+                'required_files': ['tsconfig.json']
+            },
             'java': {
                 'file_extension': '.java',
                 'project_file': 'pom.xml',
@@ -326,6 +333,8 @@ class CodeCompiler:
                 return self._compile_python_file(file_path)
             elif language == 'javascript':
                 return self._compile_javascript_file(file_path)
+            elif language == 'typescript':
+                return self._compile_typescript_file(file_path)
             elif language == 'java':
                 return self._compile_java_file(file_path)
             elif language == 'go':
@@ -446,6 +455,32 @@ class CodeCompiler:
                 "file": file_path
             }
     
+    def _compile_typescript_file(self, file_path: str) -> Dict[str, Any]:
+        """Check TypeScript file compilation"""
+        try:
+            # Try TypeScript compiler first
+            result = subprocess.run(
+                ['npx', 'tsc', '--noEmit', file_path],
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+            
+            return {
+                "success": result.returncode == 0,
+                "returncode": result.returncode,
+                "stdout": result.stdout,
+                "stderr": result.stderr,
+                "file": file_path
+            }
+            
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "file": file_path
+            }
+
     def _compile_java_file(self, file_path: str) -> Dict[str, Any]:
         """Compile a Java file"""
         try:
@@ -541,6 +576,8 @@ class CodeCompiler:
             analysis.update(self._analyze_java_errors(stderr, stdout))
         elif language == 'javascript':
             analysis.update(self._analyze_javascript_errors(stderr, stdout))
+        elif language == 'typescript':
+            analysis.update(self._analyze_typescript_errors(stderr, stdout))
         elif language == 'go':
             analysis.update(self._analyze_go_errors(stderr, stdout))
         elif language == 'rust':
@@ -666,6 +703,46 @@ class CodeCompiler:
             "detailed_errors": errors
         }
     
+    def _analyze_typescript_errors(self, stderr: str, stdout: str) -> Dict[str, Any]:
+        """Analyze TypeScript compilation errors"""
+        errors = []
+        warnings = []
+        error_categories = {}
+        
+        # Combine stderr and stdout for TypeScript compiler output
+        all_output = (stderr + '\n' + stdout).strip()
+        lines = all_output.split('\n')
+        
+        for line in lines:
+            if line.strip():
+                # TypeScript error format: "file.ts(line,col): error TS2304: Cannot find name 'X'."
+                if ': error TS' in line:
+                    errors.append(line.strip())
+                    
+                    if 'TS2304:' in line:  # Cannot find name
+                        error_categories['Type Error'] = error_categories.get('Type Error', 0) + 1
+                    elif 'TS2322:' in line:  # Type assignment error
+                        error_categories['Type Assignment'] = error_categories.get('Type Assignment', 0) + 1
+                    elif 'TS2339:' in line:  # Property does not exist
+                        error_categories['Property Error'] = error_categories.get('Property Error', 0) + 1
+                    elif 'TS2307:' in line:  # Cannot find module
+                        error_categories['Module Error'] = error_categories.get('Module Error', 0) + 1
+                    elif 'TS1005:' in line:  # Syntax error
+                        error_categories['Syntax Error'] = error_categories.get('Syntax Error', 0) + 1
+                    else:
+                        error_categories['Other Error'] = error_categories.get('Other Error', 0) + 1
+                        
+                elif ': warning TS' in line:
+                    warnings.append(line.strip())
+        
+        return {
+            "total_errors": len(errors),
+            "total_warnings": len(warnings),
+            "error_categories": error_categories,
+            "detailed_errors": errors,
+            "detailed_warnings": warnings
+        }
+
     def _analyze_go_errors(self, stderr: str, stdout: str) -> Dict[str, Any]:
         """Analyze Go compilation errors"""
         errors = []

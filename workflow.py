@@ -90,7 +90,7 @@ class AgentWorkflow:
                         f.write(f"- Success Rate: N/A (no compilation attempts)\n")
                     
                     # Show selective scenario regeneration info if available
-                    if output_data.get("selective_regeneration_used"):
+                    if isinstance(output_data, dict) and output_data.get("selective_regeneration_used"):
                         regenerated_scenarios = output_data.get("regenerated_scenarios", [])
                         preserved_scenarios = output_data.get("preserved_scenarios", [])
                         f.write(f"- Selective Regeneration: ✅ USED\n")
@@ -140,7 +140,7 @@ class AgentWorkflow:
                         f.write("\n")
                 
                 # Show final recommendations if available
-                if output_data.get("final_recommendations"):
+                if isinstance(output_data, dict) and output_data.get("final_recommendations"):
                     f.write("💡 FINAL RECOMMENDATIONS:\n")
                     f.write("-" * 30 + "\n")
                     for rec in output_data["final_recommendations"]:
@@ -154,14 +154,15 @@ class AgentWorkflow:
                     f.write("   4. Review and manually fix remaining compilation errors\n")
         
                 f.write(f"\n📊 For complete analysis, see: COMPREHENSIVE_CODE_GENERATION_REPORT.md\n")
-                f.write(f"📂 All files saved to: {output_data.get('code_path', 'project directory')}\n")
+                code_path = output_data.get('code_path', 'project directory') if isinstance(output_data, dict) else 'project directory'
+                f.write(f"📂 All files saved to: {code_path}\n")
         
                 # Write final error message
                 if status == "compilation_failed":
-                    error_message = output_data.get("error", "Code generation completed but compilation failed")
+                    error_message = output_data.get("error", "Code generation completed but compilation failed") if isinstance(output_data, dict) else "Code generation completed but compilation failed"
                     f.write(f"\n❌ FINAL RESULT: {error_message}\n")
                 elif status == "success":
-                    successful_attempt = output_data.get("successful_attempt", len(compilation_attempts))
+                    successful_attempt = output_data.get("successful_attempt", len(compilation_attempts)) if isinstance(output_data, dict) else len(compilation_attempts)
                     f.write(f"\n✅ FINAL RESULT: Code generation successful on attempt #{successful_attempt}\n")
                 
                 f.write("\nINPUT:\n")
@@ -409,21 +410,23 @@ class AgentWorkflow:
                 if agent_result["status"] == "success":
                     # Use enhanced reporting for Code Generator
                     if "code generator" in agent.name.lower():
+                        status = agent_result.get("status", "success") if isinstance(agent_result, dict) else "success"
                         saved_file = self._write_code_generator_output_with_compilation_details(
                             agent.name, 
                             i, 
                             current_input, 
                             agent_result, 
-                            agent_result["status"]
+                            status
                         )
                     # Use enhanced reporting for Test Runner
                     elif "test runner" in agent.name.lower():
+                        status = agent_result.get("status", "success") if isinstance(agent_result, dict) else "success"
                         saved_file = self._write_test_runner_output_with_results(
                             agent.name, 
                             i, 
                             current_input, 
                             agent_result, 
-                            agent_result["status"]
+                            status
                         )
                     else:
                         saved_file = self._save_agent_output(
@@ -438,20 +441,22 @@ class AgentWorkflow:
                 else:
                     # Save error output as well with enhanced reporting for specific agents
                     if "code generator" in agent.name.lower():
+                        status = agent_result.get("status", "error") if isinstance(agent_result, dict) else "error"
                         saved_file = self._write_code_generator_output_with_compilation_details(
                             agent.name, 
                             i, 
                             current_input, 
                             agent_result, 
-                            agent_result["status"]
+                            status
                         )
                     elif "test runner" in agent.name.lower():
+                        status = agent_result.get("status", "error") if isinstance(agent_result, dict) else "error"
                         saved_file = self._write_test_runner_output_with_results(
                             agent.name, 
                             i, 
                             current_input, 
                             agent_result, 
-                            agent_result["status"]
+                            status
                         )
                     else:
                         error_output = f"ERROR: {agent_result.get('error', 'Unknown error')}"
