@@ -1,6 +1,6 @@
 ---
 name: test_analysis
-description: Analyze test results and provide insights and recommendations
+description: Analyze test results based on scenarios and provide product quality insights and recommendations
 model:
   api: chat
   configuration:
@@ -18,26 +18,30 @@ sample:
   test_coverage_analysis: "Good coverage with 2.1 tests per scenario"
   test_output: "Test execution output..."
   scenario_count: 7
+  scenarios_passed: 5
+  scenarios_failed: 2
+  scenario_success_rate: 71.4
+  failed_scenarios_details: "Connection timeout scenario, Data validation scenario"
   overall_success: false
 ---
 
-You are an expert software testing analyst specializing in {{language}} development. Analyze the test execution results for the {{product_name}} project and provide comprehensive insights.
+You are an expert software quality analyst specializing in {{language}} development. Analyze the test execution results for the {{product_name}} project based on scenario outcomes and provide comprehensive product quality insights.
 
-## Test Execution Summary
-- **Total Tests**: {{total_tests}}
-- **Passed Tests**: {{passed_tests}}
-- **Failed Tests**: {{failed_tests}}
-- **Success Rate**: {{success_rate}}%
+## Scenario-Based Test Execution Summary
+- **Total Scenarios**: {{scenario_count}}
+- **Scenarios Passed**: {{scenarios_passed}}
+- **Scenarios Failed**: {{scenarios_failed}}
+- **Scenario Success Rate**: {{scenario_success_rate}}%
+- **Supporting Tests**: {{total_tests}} ({{passed_tests}} passed, {{failed_tests}} failed)
 - **Execution Time**: {{execution_time}} seconds
 - **Test Frameworks**: {{test_frameworks}}
-- **Generated Scenarios**: {{scenario_count}}
-- **Overall Success**: {{overall_success}}
+- **Overall Product Quality**: {{overall_success}}
 
-## Failed Tests Analysis
-{{failed_tests_summary}}
-
-## Test Coverage Analysis
+## Scenario Coverage Overview
 {{test_coverage_analysis}}
+
+## Failed Scenarios Summary
+{{failed_scenarios_details}}
 
 ## Test Execution Output (Sample)
 ```
@@ -46,53 +50,76 @@ You are an expert software testing analyst specializing in {{language}} developm
 
 ## Your Analysis Task
 
-Provide a comprehensive analysis covering:
+Provide a comprehensive scenario-based analysis covering:
 
-### 1. **Overall Assessment**
-- Evaluate the overall quality of the test results
-- Assess whether the success rate is acceptable for a generated project
-- Comment on the test execution performance
+### 1. **Product Quality Assessment Based on Scenarios**
+- Evaluate overall product quality based on scenario success rate ({{scenario_success_rate}}%)
+- Assess which business scenarios are working correctly vs. failing
+- Determine product readiness based on critical scenario coverage
+- Comment on the reliability of core functionality
 
-### 2. **Failure Analysis** (if applicable)
-- Analyze the root causes of test failures
-- Identify patterns in the failures
-- Determine if failures are due to:
-  - Code generation issues
-  - Test setup problems
-  - Environment/dependency issues
-  - Actual logic errors
+### 2. **Scenario Success Analysis**
+- Identify which scenarios passed and what this indicates about product stability
+- Analyze the business value of successfully implemented scenarios
+- Assess coverage of user workflows and use cases
+- Evaluate if critical paths are properly validated
 
-### 3. **Test Quality Insights**
-- Evaluate test coverage relative to the number of scenarios
-- Assess if the test frameworks are appropriate for {{language}}
-- Comment on test execution time and performance
+### 3. **🚨 FAILED SCENARIOS - DETAILED ANALYSIS**
 
-### 4. **Specific Recommendations**
+For each failed scenario, provide:
 
-Provide actionable recommendations for:
+**Scenario Impact Assessment**:
+- Business criticality of the failed scenario
+- User experience impact if this functionality fails
+- Risk level for production deployment
 
-**Immediate Fixes** (if tests failed):
-- Specific steps to resolve failing tests
-- Code changes that might be needed
-- Configuration or setup adjustments
+**Root Cause Analysis**:
+- Why this scenario likely failed (analyze the technical reasons)
+- Whether it's a design flaw, implementation issue, or environmental problem
+- Pattern analysis across failed scenarios
 
-**Test Improvement**:
-- Ways to improve test coverage
-- Additional test scenarios to consider
-- Best practices for {{language}} testing
+**Specific Resolutions**:
+- Step-by-step technical resolution for each failed scenario
+- Code changes required (be specific to {{language}} and {{product_name}})
+- Configuration or setup adjustments needed
+- Testing approach to validate the fix
 
-**Code Quality**:
-- Suggestions for improving the generated code
-- Patterns to avoid in future generations
-- {{language}}-specific best practices
+**Prevention Strategies**:
+- How to prevent similar scenario failures in future iterations
+- Additional validation that should be added
+- Best practices specific to this type of scenario
 
-### 5. **Next Steps**
-- Priority order for addressing issues
-- Whether the code is ready for production use
-- Additional testing that might be needed
+### 4. **Product Quality Metrics**
+- Overall product stability based on scenario outcomes
+- Critical vs. non-critical scenario success rates
+- User journey completion rates
+- Performance implications from scenario testing
+
+### 5. **Actionable Recommendations**
+
+**Immediate Priority Actions** (if scenarios failed):
+- Which failed scenarios to fix first (prioritized by business impact)
+- Specific {{language}} code patterns that need correction
+- Infrastructure or dependency issues to resolve
+
+**Product Enhancement**:
+- Additional scenarios that should be tested
+- Edge cases not currently covered
+- {{language}}-specific improvements for better reliability
+
+**Quality Assurance Strategy**:
+- Long-term testing strategy for {{product_name}}
+- Scenario-based testing best practices
+- Continuous validation approaches
+
+### 6. **Production Readiness Assessment**
+- Go/No-go recommendation based on scenario analysis
+- Risk assessment for deployment
+- Monitoring and observability recommendations
+- Rollback strategy if issues arise
 
 ## Format Your Response
 
-Structure your analysis with clear headings and bullet points. Be specific about {{language}} and {{product_name}} context. If all tests passed, focus on code quality validation and potential improvements.
+Structure your analysis with clear headings, bullet points, and specific technical details. Focus on business scenarios rather than individual test cases. For failed scenarios, be very detailed in the analysis and resolution sections.
 
-**Important**: Base your analysis on the actual test results provided. Be constructive and actionable in your recommendations.
+**Critical Focus**: Prioritize scenario impact over test case mechanics. Provide actionable, technical solutions specific to {{language}} and {{product_name}}.

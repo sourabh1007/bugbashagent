@@ -1172,9 +1172,10 @@ class TestRunner(BaseAgent):
             from langchain_core.output_parsers import StrOutputParser
             chain = prompt_template | llm_for_chain | StrOutputParser()
             
-            # Prepare prompt variables
-            failed_tests_summary = self._summarize_failed_tests(test_results.get("detailed_results", []))
-            test_coverage_analysis = self._analyze_test_coverage(test_discovery, scenario_results)
+            # Generate scenario-based analysis data for product quality focus
+            scenario_analysis = self._generate_scenario_analysis(test_results, scenario_results, test_discovery)
+            failed_tests_summary = self._summarize_failed_scenarios(test_results, scenario_results)
+            test_coverage_analysis = self._analyze_scenario_coverage(test_discovery, scenario_results)
             
             prompt_vars = {
                 "language": language.upper(),
@@ -1185,11 +1186,16 @@ class TestRunner(BaseAgent):
                 "success_rate": test_results.get("success_rate", 0),
                 "execution_time": test_results.get("execution_time", 0),
                 "test_frameworks": ', '.join(test_discovery.get("test_frameworks", ["unknown"])),
+                # Scenario-based variables for product quality analysis
+                "scenario_count": scenario_analysis["total_scenarios"],
+                "scenarios_passed": scenario_analysis["scenarios_passed"],
+                "scenarios_failed": scenario_analysis["scenarios_failed"],
+                "scenario_success_rate": scenario_analysis["scenario_success_rate"],
+                "failed_scenarios_details": scenario_analysis["failed_scenarios_details"],
                 "failed_tests_summary": failed_tests_summary,
                 "test_coverage_analysis": test_coverage_analysis,
                 "test_output": test_results.get("output", "")[:2000],  # Limit output size
-                "scenario_count": len(scenario_results.get("successful", [])),
-                "overall_success": test_results.get("success", False)
+                "overall_success": scenario_analysis["product_quality_acceptable"]
             }
             
             # Generate analysis
@@ -1208,6 +1214,207 @@ class TestRunner(BaseAgent):
         except Exception as e:
             self.log(f"⚠️ LLM analysis failed: {str(e)}, using default analysis")
             return self._create_default_analysis(test_results, test_discovery, language)
+
+    def _generate_scenario_analysis(self, test_results: Dict[str, Any], scenario_results: Dict[str, Any], test_discovery: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate scenario-based analysis for product quality assessment."""
+        detailed_results = test_results.get("detailed_results", [])
+        
+        # Map test results to business scenarios
+        scenarios = self._map_tests_to_scenarios(detailed_results, scenario_results)
+        
+        total_scenarios = len(scenarios)
+        scenarios_passed = sum(1 for scenario in scenarios.values() if scenario["passed"])
+        scenarios_failed = total_scenarios - scenarios_passed
+        scenario_success_rate = (scenarios_passed / total_scenarios * 100) if total_scenarios > 0 else 0
+        
+        # Generate detailed analysis of failed scenarios
+        failed_scenarios_details = self._analyze_failed_scenarios(scenarios)
+        
+        # Determine product quality acceptability
+        product_quality_acceptable = scenario_success_rate >= 80  # 80% scenario success threshold
+        
+        return {
+            "total_scenarios": total_scenarios,
+            "scenarios_passed": scenarios_passed,
+            "scenarios_failed": scenarios_failed,
+            "scenario_success_rate": round(scenario_success_rate, 2),
+            "failed_scenarios_details": failed_scenarios_details,
+            "product_quality_acceptable": product_quality_acceptable,
+            "scenarios": scenarios
+        }
+    
+    def _map_tests_to_scenarios(self, detailed_results: List[Dict[str, Any]], scenario_results: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+        """Map individual test results to business scenarios."""
+        scenarios = {}
+        
+        # Group tests by scenario (based on test name patterns or modules)
+        for test in detailed_results:
+            test_name = test.get("name", "Unknown Test")
+            scenario_name = self._extract_scenario_from_test_name(test_name)
+            
+            if scenario_name not in scenarios:
+                scenarios[scenario_name] = {
+                    "name": scenario_name,
+                    "tests": [],
+                    "passed": True,
+                    "critical_failures": [],
+                    "business_impact": "Low"
+                }
+            
+            scenarios[scenario_name]["tests"].append(test)
+            
+            # If any test in scenario fails, scenario fails
+            if test.get("status") == "failed":
+                scenarios[scenario_name]["passed"] = False
+                scenarios[scenario_name]["critical_failures"].append({
+                    "test": test_name,
+                    "error": test.get("error", "No error available"),
+                    "business_impact": self._assess_business_impact(test_name, test.get("error", ""))
+                })
+        
+        # Update business impact based on failures
+        for scenario in scenarios.values():
+            if scenario["critical_failures"]:
+                impact_levels = [f["business_impact"] for f in scenario["critical_failures"]]
+                if "Critical" in impact_levels:
+                    scenario["business_impact"] = "Critical"
+                elif "High" in impact_levels:
+                    scenario["business_impact"] = "High"
+                else:
+                    scenario["business_impact"] = "Medium"
+        
+        return scenarios
+    
+    def _extract_scenario_from_test_name(self, test_name: str) -> str:
+        """Extract business scenario name from test name."""
+        # Common patterns for scenario extraction
+        test_name_lower = test_name.lower()
+        
+        if "login" in test_name_lower or "auth" in test_name_lower:
+            return "User Authentication"
+        elif "payment" in test_name_lower or "checkout" in test_name_lower:
+            return "Payment Processing"
+        elif "search" in test_name_lower:
+            return "Search Functionality"
+        elif "profile" in test_name_lower or "account" in test_name_lower:
+            return "User Profile Management"
+        elif "api" in test_name_lower:
+            return "API Integration"
+        elif "database" in test_name_lower or "db" in test_name_lower:
+            return "Data Management"
+        elif "security" in test_name_lower:
+            return "Security Features"
+        elif "performance" in test_name_lower:
+            return "Performance & Scalability"
+        elif "ui" in test_name_lower or "interface" in test_name_lower:
+            return "User Interface"
+        else:
+            # Extract from module or class name
+            parts = test_name.split("::")
+            if len(parts) > 1:
+                return parts[0].replace("_", " ").title()
+            return "Core Functionality"
+    
+    def _assess_business_impact(self, test_name: str, error: str) -> str:
+        """Assess business impact of a test failure."""
+        test_name_lower = test_name.lower()
+        error_lower = error.lower()
+        
+        # Critical impact keywords
+        critical_keywords = ["payment", "security", "login", "auth", "crash", "exception", "timeout"]
+        if any(keyword in test_name_lower or keyword in error_lower for keyword in critical_keywords):
+            return "Critical"
+        
+        # High impact keywords  
+        high_keywords = ["api", "database", "integration", "checkout", "profile"]
+        if any(keyword in test_name_lower or keyword in error_lower for keyword in high_keywords):
+            return "High"
+        
+        # Default to medium impact
+        return "Medium"
+    
+    def _analyze_failed_scenarios(self, scenarios: Dict[str, Dict[str, Any]]) -> str:
+        """Generate detailed analysis of failed scenarios."""
+        failed_scenarios = [s for s in scenarios.values() if not s["passed"]]
+        
+        if not failed_scenarios:
+            return "No failed scenarios detected. All business scenarios are functioning correctly."
+        
+        analysis_parts = []
+        
+        # Group by business impact
+        critical_scenarios = [s for s in failed_scenarios if s["business_impact"] == "Critical"]
+        high_impact_scenarios = [s for s in failed_scenarios if s["business_impact"] == "High"] 
+        medium_impact_scenarios = [s for s in failed_scenarios if s["business_impact"] == "Medium"]
+        
+        if critical_scenarios:
+            analysis_parts.append("🚨 CRITICAL BUSINESS SCENARIOS FAILING:")
+            for scenario in critical_scenarios:
+                analysis_parts.append(f"• {scenario['name']}: {len(scenario['critical_failures'])} critical issues")
+                for failure in scenario['critical_failures'][:2]:  # Top 2 failures
+                    analysis_parts.append(f"  - {failure['test']}: {failure['error'][:100]}...")
+        
+        if high_impact_scenarios:
+            analysis_parts.append("\n⚠️ HIGH IMPACT SCENARIOS:")
+            for scenario in high_impact_scenarios:
+                analysis_parts.append(f"• {scenario['name']}: {len(scenario['critical_failures'])} issues")
+        
+        if medium_impact_scenarios:
+            analysis_parts.append(f"\n📋 {len(medium_impact_scenarios)} medium impact scenarios also affected")
+        
+        return "\n".join(analysis_parts)
+    
+    def _summarize_failed_scenarios(self, test_results: Dict[str, Any], scenario_results: Dict[str, Any]) -> str:
+        """Summarize failed scenarios for prompt context (scenario-focused version)."""
+        detailed_results = test_results.get("detailed_results", [])
+        failed_tests = [result for result in detailed_results if result.get("status") == "failed"]
+        
+        if not failed_tests:
+            return "No failed scenarios to summarize."
+        
+        # Group failures by scenario
+        scenario_failures = {}
+        for test in failed_tests:
+            scenario = self._extract_scenario_from_test_name(test.get("name", "Unknown"))
+            if scenario not in scenario_failures:
+                scenario_failures[scenario] = []
+            scenario_failures[scenario].append(test)
+        
+        summary_parts = []
+        for scenario, failures in list(scenario_failures.items())[:5]:  # Top 5 scenarios
+            summary_parts.append(f"• {scenario}: {len(failures)} failures")
+            if failures:
+                error = failures[0].get("error", "No error available")
+                clean_error = error.replace('\n', ' ').replace('\r', '')[:150]
+                summary_parts.append(f"  Sample: {clean_error}...")
+        
+        return "\n".join(summary_parts)
+
+    def _analyze_scenario_coverage(self, test_discovery: Dict[str, Any], scenario_results: Dict[str, Any]) -> str:
+        """Analyze scenario coverage for product quality assessment."""
+        analysis = []
+        
+        total_test_files = test_discovery.get("total_test_files", 0)
+        test_frameworks = test_discovery.get("test_frameworks", [])
+        successful_scenarios = len(scenario_results.get("successful", []))
+        
+        analysis.append(f"Scenario Coverage Analysis:")
+        analysis.append(f"- Test files discovered: {total_test_files}")
+        analysis.append(f"- Test frameworks detected: {', '.join(test_frameworks) if test_frameworks else 'None'}")
+        analysis.append(f"- Business scenarios covered: {successful_scenarios}")
+        
+        if total_test_files == 0:
+            analysis.append("- Coverage Risk: No test files found - product quality cannot be verified")
+        elif successful_scenarios > 0:
+            ratio = total_test_files / successful_scenarios
+            if ratio < 0.5:
+                analysis.append("- Coverage Risk: Insufficient tests per business scenario")
+            elif ratio > 2:
+                analysis.append("- Coverage Strength: Comprehensive testing per business scenario")
+            else:
+                analysis.append("- Coverage Status: Adequate testing per business scenario")
+        
+        return "\n".join(analysis)
 
     def _summarize_failed_tests(self, detailed_results: List[Dict[str, Any]]) -> str:
         """Create a summary of failed tests for LLM analysis"""
@@ -1556,12 +1763,12 @@ class TestRunner(BaseAgent):
         return report
 
     def _save_test_results(self, code_path: str, results: Dict[str, Any]) -> None:
-        """Save test results to a file for later analysis"""
+        """Save test results to both JSON and Markdown files for later analysis"""
         try:
             import json
-            results_file = os.path.join(code_path, "test_results.json")
             
-            # Convert datetime objects to strings for JSON serialization
+            # Save JSON results
+            results_file = os.path.join(code_path, "test_results.json")
             serializable_results = self._make_json_serializable(results)
             
             with open(results_file, 'w', encoding='utf-8') as f:
@@ -1569,8 +1776,252 @@ class TestRunner(BaseAgent):
             
             self.log(f"💾 Test results saved to: {results_file}")
             
+            # Save Markdown report
+            self._save_markdown_report(code_path, results)
+            
         except Exception as e:
             self.log(f"⚠️ Failed to save test results: {str(e)}")
+
+    def _save_markdown_report(self, code_path: str, results: Dict[str, Any]) -> None:
+        """Save test results as a comprehensive Markdown report"""
+        try:
+            # Generate comprehensive Markdown report
+            comprehensive_report = results.get("comprehensive_report", "")
+            
+            # If no comprehensive report, generate one from available data
+            if not comprehensive_report:
+                test_results = results.get("test_results", {})
+                test_analysis = results.get("test_analysis", {})
+                test_discovery = results.get("test_discovery", {})
+                
+                comprehensive_report = self._generate_markdown_report(
+                    test_results, test_analysis, test_discovery, code_path
+                )
+            
+            # Save to Markdown file
+            markdown_file = os.path.join(code_path, "test_report.md")
+            with open(markdown_file, 'w', encoding='utf-8') as f:
+                f.write(comprehensive_report)
+            
+            self.log(f"📄 Markdown report saved to: {markdown_file}")
+            
+            # Also save a simplified version for UI display
+            self._save_ui_markdown_report(code_path, results)
+            
+        except Exception as e:
+            self.log(f"⚠️ Failed to save Markdown report: {str(e)}")
+
+    def _save_ui_markdown_report(self, code_path: str, results: Dict[str, Any]) -> None:
+        """Save a UI-optimized Markdown report for Streamlit display"""
+        try:
+            test_results = results.get("test_results", {})
+            test_analysis = results.get("test_analysis", {})
+            test_discovery = results.get("test_discovery", {})
+            validation_issues = results.get("validation_issues", [])
+            
+            # Generate UI-optimized report
+            ui_report = self._generate_ui_markdown_report(
+                test_results, test_analysis, test_discovery, validation_issues
+            )
+            
+            # Save to UI-specific Markdown file
+            ui_markdown_file = os.path.join(code_path, "test_report_ui.md")
+            with open(ui_markdown_file, 'w', encoding='utf-8') as f:
+                f.write(ui_report)
+            
+            self.log(f"🎨 UI Markdown report saved to: {ui_markdown_file}")
+            
+        except Exception as e:
+            self.log(f"⚠️ Failed to save UI Markdown report: {str(e)}")
+
+    def _generate_markdown_report(self, test_results: Dict[str, Any], test_analysis: Dict[str, Any], 
+                                test_discovery: Dict[str, Any], code_path: str) -> str:
+        """Generate a comprehensive Markdown report from test data"""
+        success_rate = test_results.get("success_rate", 0)
+        total_tests = test_results.get("total_tests", 0)
+        passed_tests = test_results.get("passed_tests", 0)
+        failed_tests = test_results.get("failed_tests", 0)
+        execution_time = test_results.get("execution_time", 0)
+        frameworks = test_discovery.get("test_frameworks", ["Unknown"])
+        
+        # Determine status
+        if total_tests == 0:
+            status_emoji = "⚠️"
+            status_text = "No Tests Found"
+        elif success_rate >= 80:
+            status_emoji = "✅"
+            status_text = "Excellent"
+        elif success_rate >= 50:
+            status_emoji = "⚠️"
+            status_text = "Needs Attention"
+        else:
+            status_emoji = "❌"
+            status_text = "Critical Issues"
+        
+        report = f"""# 🧪 Test Execution Report
+
+## {status_emoji} Executive Summary
+
+| Metric | Value |
+|--------|-------|
+| **Overall Status** | {status_emoji} {status_text} |
+| **Success Rate** | {success_rate:.1f}% |
+| **Total Tests** | {total_tests} |
+| **Execution Time** | {execution_time:.2f}s |
+| **Test Frameworks** | {', '.join(frameworks)} |
+
+## 📊 Test Statistics
+
+### Results Breakdown
+- ✅ **Passed Tests:** {passed_tests}
+- ❌ **Failed Tests:** {failed_tests}
+- 📁 **Test Files:** {test_discovery.get('test_files_count', 0)}
+- ⏱️ **Average Time per Test:** {(execution_time/total_tests):.2f}s (if tests > 0)
+
+### Quality Score: {test_analysis.get('test_quality_score', 0):.1f}/1.0
+
+## 🔍 Analysis Results
+"""
+        
+        # Add LLM analysis if available
+        llm_analysis = test_analysis.get("llm_analysis", "")
+        if llm_analysis:
+            report += f"""
+### 🤖 AI Analysis
+{llm_analysis}
+
+"""
+        
+        # Add key insights
+        insights = test_analysis.get("key_insights", [])
+        if insights:
+            report += "### 💡 Key Insights\n"
+            for insight in insights:
+                report += f"- {insight}\n"
+            report += "\n"
+        
+        # Add recommendations
+        recommendations = test_analysis.get("recommendations", [])
+        if recommendations:
+            report += "### 📋 Recommendations\n"
+            for rec in recommendations:
+                report += f"- {rec}\n"
+            report += "\n"
+        
+        # Add failure details if there are failures
+        if failed_tests > 0:
+            report += f"""## ❌ Failure Analysis
+
+**Total Failures:** {failed_tests}
+
+### Failed Test Details
+"""
+            detailed_results = test_results.get("detailed_results", [])
+            failed_test_details = [test for test in detailed_results if test.get("status") == "failed"]
+            
+            for i, test in enumerate(failed_test_details[:10], 1):  # Show first 10 failures
+                test_name = test.get('name', f'Test {i}')
+                error = test.get('error', 'No error details available')
+                duration = test.get('duration', 'Unknown')
+                
+                report += f"""
+#### {i}. {test_name}
+- **Duration:** {duration}
+- **Error:**
+```
+{error[:500]}{'...' if len(error) > 500 else ''}
+```
+
+"""
+            
+            if len(failed_test_details) > 10:
+                report += f"*... and {len(failed_test_details) - 10} more failures*\n\n"
+        
+        # Add technical details
+        report += f"""## � Technical Details
+
+- **Code Path:** `{code_path}`
+- **Test Files Discovered:** {test_discovery.get('test_files_count', 0)}
+- **Test Frameworks:** {', '.join(frameworks)}
+- **Analysis Timestamp:** {test_analysis.get('analysis_timestamp', 'Unknown')}
+- **Analysis Model:** {test_analysis.get('analysis_model', 'Unknown')}
+
+---
+
+*Report generated by Test Runner Agent - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*
+"""
+        
+        return report
+
+    def _generate_ui_markdown_report(self, test_results: Dict[str, Any], test_analysis: Dict[str, Any], 
+                                   test_discovery: Dict[str, Any], validation_issues: List[str]) -> str:
+        """Generate a UI-optimized Markdown report for Streamlit display"""
+        success_rate = test_results.get("success_rate", 0)
+        total_tests = test_results.get("total_tests", 0)
+        passed_tests = test_results.get("passed_tests", 0)
+        failed_tests = test_results.get("failed_tests", 0)
+        execution_time = test_results.get("execution_time", 0)
+        
+        # Create a compact, UI-friendly report
+        report = f"""## 🧪 Test Execution Summary
+
+### 📊 Quick Stats
+- **Success Rate:** {success_rate:.1f}%
+- **Tests:** {passed_tests}✅ / {failed_tests}❌ (Total: {total_tests})
+- **Duration:** {execution_time:.2f}s
+- **Quality Score:** {test_analysis.get('test_quality_score', 0):.1f}/1.0
+
+"""
+        
+        # Add status indicator
+        if success_rate >= 80:
+            report += "### ✅ Status: Excellent\n"
+        elif success_rate >= 50:
+            report += "### ⚠️ Status: Needs Attention\n"
+        else:
+            report += "### ❌ Status: Critical Issues\n"
+        
+        # Add key insights in a compact format
+        insights = test_analysis.get("key_insights", [])[:3]  # Limit to 3 for UI
+        if insights:
+            report += "\n### 💡 Key Points\n"
+            for insight in insights:
+                # Clean up insight text for UI display
+                clean_insight = insight.replace("- ", "").replace("• ", "")
+                report += f"- {clean_insight}\n"
+        
+        # Add top recommendations
+        recommendations = test_analysis.get("recommendations", [])[:3]  # Limit to 3 for UI
+        if recommendations:
+            report += "\n### 📋 Top Actions\n"
+            for rec in recommendations:
+                clean_rec = rec.replace("- ", "").replace("• ", "")
+                report += f"- {clean_rec}\n"
+        
+        # Add validation issues if any
+        if validation_issues:
+            report += "\n### ⚠️ Issues Detected\n"
+            for issue in validation_issues[:3]:  # Limit to 3 for UI
+                report += f"- {issue}\n"
+        
+        # Add failure summary if needed
+        if failed_tests > 0:
+            report += f"\n### ❌ Failures Summary\n"
+            report += f"**{failed_tests} tests failed** - Review detailed logs for specific error messages.\n"
+            
+            # Show first few failure names
+            detailed_results = test_results.get("detailed_results", [])
+            failed_test_details = [test for test in detailed_results if test.get("status") == "failed"][:3]
+            
+            if failed_test_details:
+                report += "\n**Failed Tests:**\n"
+                for test in failed_test_details:
+                    test_name = test.get('name', 'Unknown Test')
+                    report += f"- {test_name}\n"
+        
+        report += f"\n---\n*Generated: {datetime.now().strftime('%H:%M:%S')}*"
+        
+        return report
 
     def _make_json_serializable(self, obj):
         """Convert objects to JSON serializable format"""

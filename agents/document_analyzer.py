@@ -75,6 +75,9 @@ class DocumentAnalyzer(BaseAgent):
         self.log("Starting document analysis with unlimited scenario generation and duplicate prevention")
         
         try:
+            # Update status - starting analysis
+            self.update_status("running", "Analyzing document content", 20.0)
+            
             # Get the analysis result from the LLM
             self.log("Sending document content to LLM for comprehensive scenario generation...")
             
@@ -86,8 +89,14 @@ class DocumentAnalyzer(BaseAgent):
                 "document_scenario_extraction"
             )
             
+            # Update status - querying LLM
+            self.update_status("running", "Querying LLM for scenario generation", 40.0)
+            
             analysis_result = self._runnable.invoke({"document_content": input_data})
 
+            # Update status - parsing response
+            self.update_status("running", "Parsing LLM response", 60.0)
+            
             # Try to parse the JSON response with recovery strategies
             parsed_result, parse_debug = self._parse_json_response(analysis_result)
             if not parsed_result:
@@ -102,6 +111,9 @@ class DocumentAnalyzer(BaseAgent):
             original_count = len(parsed_result.get("scenarioList", []))
             self.log(f"📊 Initial scenario count from LLM: {original_count}")
             
+            # Update status - validating and removing duplicates
+            self.update_status("running", "Validating scenarios and removing duplicates", 80.0)
+            
             # Validate the structure and content (includes duplicate removal)
             self._validate_analysis_result(parsed_result)
             
@@ -113,6 +125,9 @@ class DocumentAnalyzer(BaseAgent):
                 self.log(f"🔧 Duplicate prevention: Removed {duplicate_count} duplicate/similar scenarios")
             
             self.log(f"✅ Final unique scenario count: {final_count}")
+            
+            # Update status - finalizing results
+            self.update_status("running", f"Analysis complete: {final_count} unique scenarios generated", 95.0)
             
             # Enhanced reporting
             self._log_scenario_analysis_summary(parsed_result, original_count, duplicate_count)

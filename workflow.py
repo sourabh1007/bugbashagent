@@ -20,6 +20,8 @@ class AgentWorkflow:
         self.agents = self._initialize_agents()
         self.workflow_history = []
         self.output_folder = None
+        self.status_callback = None  # Callback for workflow status updates
+        self.agent_status_callback = None  # Callback for individual agent updates
     
     def _initialize_agents(self) -> List[Any]:
         """Initialize all agents in the workflow with their designated LLMs."""
@@ -28,6 +30,31 @@ class AgentWorkflow:
             CodeGenerator(self.code_llm),
             TestRunner(self.test_llm)
         ]
+    
+    def set_status_callback(self, callback):
+        """Set callback for workflow status updates"""
+        self.status_callback = callback
+    
+    def set_agent_status_callback(self, callback):
+        """Set callback for individual agent status updates"""
+        self.agent_status_callback = callback
+        # Set the callback for all agents
+        for agent in self.agents:
+            agent.set_status_callback(callback)
+    
+    def _notify_workflow_status(self, status: str, message: str = "", current_agent: str = None, step: int = None):
+        """Notify workflow status change"""
+        if self.status_callback:
+            try:
+                self.status_callback(
+                    workflow_status=status,
+                    message=message,
+                    current_agent=current_agent,
+                    current_step=step,
+                    total_steps=len(self.agents)
+                )
+            except Exception as e:
+                print(f"❌ Error in workflow status callback: {str(e)}")
     
     def _create_output_folder(self) -> str:
         """Create a timestamped output folder for this workflow run"""
@@ -396,11 +423,22 @@ class AgentWorkflow:
         }
         
         try:
+            # Notify workflow start
+            self._notify_workflow_status("started", "Workflow execution initiated")
+            
             for i, agent in enumerate(self.agents, 1):
                 print(f"\n--- Step {i}: {agent.name} ---")
                 
-                # Execute the current agent
-                agent_result = agent.execute(current_input)
+                # Notify current agent starting
+                self._notify_workflow_status(
+                    "running", 
+                    f"Executing {agent.name}",
+                    current_agent=agent.name,
+                    step=i
+                )
+                
+                # Execute the current agent with status tracking
+                agent_result = agent.execute_with_status(current_input)
                 workflow_results["agent_outputs"].append(agent_result)
                 
                 # Store current agent result for detailed output saving
@@ -477,6 +515,14 @@ class AgentWorkflow:
                     workflow_results["error"] = agent_result.get("error", "Unknown error")
                     print(f"❌ Workflow failed at {agent.name}")
                     
+                    # Notify workflow failure
+                    self._notify_workflow_status(
+                        "failed",
+                        f"Workflow failed at {agent.name}: {agent_result.get('error', 'Unknown error')}",
+                        current_agent=agent.name,
+                        step=i
+                    )
+                    
                     # Save final workflow summary even on failure
                     self._save_workflow_summary(workflow_results)
                     return workflow_results
@@ -488,6 +534,14 @@ class AgentWorkflow:
             # Set final results
             workflow_results["final_output"] = current_input
             workflow_results["workflow_status"] = "completed"
+            
+            # Notify workflow completion
+            self._notify_workflow_status(
+                "completed",
+                "All agents executed successfully",
+                current_agent=None,
+                step=len(self.agents)
+            )
             
             # Save final workflow summary
             self._save_workflow_summary(workflow_results)
@@ -503,6 +557,12 @@ class AgentWorkflow:
             workflow_results["workflow_status"] = "error"
             workflow_results["error"] = str(e)
             print(f"❌ Workflow error: {str(e)}")
+            
+            # Notify workflow error
+            self._notify_workflow_status(
+                "error",
+                f"Workflow error: {str(e)}"
+            )
             
             # Save workflow summary even on error
             self._save_workflow_summary(workflow_results)
