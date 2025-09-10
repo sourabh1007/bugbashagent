@@ -19,9 +19,7 @@ from typing import Dict, List, Any, Optional
 from pathlib import Path
 
 from agents.base_agent import BaseAgent
-from tools.language_best_practices_manager import LanguageBestPracticesManager
 from tools.prompt_loader.prompty_loader import PromptyLoader
-from patterns.language_config import LanguageConfig
 from integrations.azure_openai.client import get_agent_azure_openai_client
 
 
@@ -33,9 +31,9 @@ class TestRunner(BaseAgent):
     def __init__(self, llm=None):
         llm_instance = llm or get_agent_azure_openai_client("test_runner")
         super().__init__("Test Runner", llm_instance)
-        self.language_best_practices_manager = LanguageBestPracticesManager()
+        # Initialize prompt loader (best practice manager not required for test execution)
         self.prompty_loader = PromptyLoader()
-        
+
         # Test execution tools
         self.test_executors = {
             'csharp': self._run_csharp_tests,
@@ -1961,67 +1959,134 @@ class TestRunner(BaseAgent):
         passed_tests = test_results.get("passed_tests", 0)
         failed_tests = test_results.get("failed_tests", 0)
         execution_time = test_results.get("execution_time", 0)
-        
-        # Create a compact, UI-friendly report
-        report = f"""## 🧪 Test Execution Summary
+        quality_score_raw = test_analysis.get('test_quality_score', 0)
 
-### 📊 Quick Stats
-- **Success Rate:** {success_rate:.1f}%
-- **Tests:** {passed_tests}✅ / {failed_tests}❌ (Total: {total_tests})
-- **Duration:** {execution_time:.2f}s
-- **Quality Score:** {test_analysis.get('test_quality_score', 0):.1f}/1.0
-
-"""
-        
-        # Add status indicator
-        if success_rate >= 80:
-            report += "### ✅ Status: Excellent\n"
-        elif success_rate >= 50:
-            report += "### ⚠️ Status: Needs Attention\n"
+        # Determine quality score scale (heuristic: values > 1 are already 0-100 scale)
+        if quality_score_raw <= 1:
+            quality_score_display = quality_score_raw * 100
         else:
-            report += "### ❌ Status: Critical Issues\n"
-        
-        # Add key insights in a compact format
-        insights = test_analysis.get("key_insights", [])[:3]  # Limit to 3 for UI
-        if insights:
-            report += "\n### 💡 Key Points\n"
-            for insight in insights:
-                # Clean up insight text for UI display
-                clean_insight = insight.replace("- ", "").replace("• ", "")
-                report += f"- {clean_insight}\n"
-        
-        # Add top recommendations
-        recommendations = test_analysis.get("recommendations", [])[:3]  # Limit to 3 for UI
-        if recommendations:
-            report += "\n### 📋 Top Actions\n"
-            for rec in recommendations:
-                clean_rec = rec.replace("- ", "").replace("• ", "")
-                report += f"- {clean_rec}\n"
-        
-        # Add validation issues if any
+            quality_score_display = quality_score_raw
+
+        # Derive status label
+        if total_tests == 0:
+            status_label = "No Tests Found"
+            status_emoji = "⚠️"
+        elif success_rate >= 80:
+            status_label = "Excellent"
+            status_emoji = "✅"
+        elif success_rate >= 50:
+            status_label = "Needs Attention"
+            status_emoji = "⚠️"
+        else:
+            status_label = "Critical Issues"
+            status_emoji = "❌"
+
+        # Start report
+        report = ["## 🧪 Test Execution Summary", "", "### 📊 Quick Stats", f"- **Success Rate:** {success_rate:.1f}%", f"- **Tests:** {passed_tests}✅ / {failed_tests}❌ (Total: {total_tests})", f"- **Duration:** {execution_time:.2f}s", f"- **Quality Score:** {quality_score_display:.1f} / 100", "", f"### {status_emoji} Status: {status_label}"]
+
+        # Build key points synthesizing real test data + curated insights (avoid misleading scenario bullets)
+        raw_insights: List[str] = test_analysis.get("key_insights", [])
+        curated_insights: List[str] = []
+
+        # Always include an explicit pass/fail summary as first bullet when tests exist
+        if total_tests > 0:
+            curated_insights.append(f"{passed_tests} test(s) passed, {failed_tests} failed.")
+
+        # Filter out placeholder or misleading lines
+        for ins in raw_insights:
+            if not ins or ins.strip() in {"---"}:
+                continue
+            lowered = ins.lower()
+            # Exclude scenario coverage claims when we DO have test results (to avoid confusion)
+            if ("scenario success rate" in lowered or "scenario coverage" in lowered) and total_tests > 0:
+                continue
+            curated_insights.append(ins.replace("- ", "").replace("• ", ""))
+            if len(curated_insights) >= 3:  # limit size
+                break
+
+        if curated_insights:
+            report.append("")
+            report.append("### 💡 Key Points")
+            for ci in curated_insights:
+                report.append(f"- {ci}")
+
+        # Recommendations (filter out those that are duplicates of insights)
+        recs_raw = test_analysis.get("recommendations", [])
+        cleaned_recs = []
+        seen_text = {ci.lower() for ci in curated_insights}
+        for rec in recs_raw:
+            if not rec:
+                continue
+            txt = rec.replace("- ", "").replace("• ", "").strip()
+            if txt.lower() in seen_text:
+                continue
+            cleaned_recs.append(txt)
+            if len(cleaned_recs) >= 3:
+                break
+
+        if cleaned_recs:
+            report.append("")
+            report.append("### 📋 Top Actions")
+            for cr in cleaned_recs:
+                report.append(f"- {cr}")
+
+        # Validation issues (environment/config problems)
         if validation_issues:
-            report += "\n### ⚠️ Issues Detected\n"
-            for issue in validation_issues[:3]:  # Limit to 3 for UI
-                report += f"- {issue}\n"
-        
-        # Add failure summary if needed
+            report.append("")
+            report.append("### ⚠️ Issues Detected")
+            for issue in validation_issues[:3]:
+                report.append(f"- {issue}")
+
+        # Failure extraction & analysis
         if failed_tests > 0:
-            report += f"\n### ❌ Failures Summary\n"
-            report += f"**{failed_tests} tests failed** - Review detailed logs for specific error messages.\n"
-            
-            # Show first few failure names
+            report.append("")
+            report.append("### ❌ Failures Summary")
+            report.append(f"**{failed_tests} tests failed**.")
+
+            # Gather detailed results if available
             detailed_results = test_results.get("detailed_results", [])
-            failed_test_details = [test for test in detailed_results if test.get("status") == "failed"][:3]
-            
-            if failed_test_details:
-                report += "\n**Failed Tests:**\n"
-                for test in failed_test_details:
-                    test_name = test.get('name', 'Unknown Test')
-                    report += f"- {test_name}\n"
-        
-        report += f"\n---\n*Generated: {datetime.now().strftime('%H:%M:%S')}*"
-        
-        return report
+            failed_detail_objs = [t for t in detailed_results if t.get("status") == "failed"]
+
+            # If no structured details, attempt to parse names from raw output
+            if not failed_detail_objs:
+                raw_output = test_results.get("output") or test_results.get("framework_output", "")
+                parsed_names = []
+                if raw_output:
+                    for line in raw_output.splitlines():
+                        line_stripped = line.strip()
+                        if line_stripped.startswith("Failed "):
+                            # Format: Failed TestName [time s]
+                            name_part = line_stripped[len("Failed "):]
+                            name_part = name_part.split(" [", 1)[0].strip()
+                            if name_part and name_part not in parsed_names:
+                                parsed_names.append(name_part)
+                failed_detail_objs = [{"name": n, "error": None} for n in parsed_names]
+
+            # Detect common root cause
+            raw_all_text = (test_results.get("output") or "") + "\n" + (test_results.get("framework_output") or "")
+            common_root = None
+            if "actively refused" in raw_all_text.lower():
+                common_root = "Connection refused to configured endpoint (likely Cosmos DB emulator/service not running or wrong port)."
+
+            if failed_detail_objs:
+                report.append("")
+                report.append("**Failed Tests:**")
+                for t in failed_detail_objs[:10]:  # limit output
+                    report.append(f"- {t.get('name', 'Unknown Test')}")
+                if len(failed_detail_objs) > 10:
+                    report.append(f"- ...and {len(failed_detail_objs) - 10} more")
+
+            if common_root:
+                report.append("")
+                report.append("**Probable Root Cause:** " + common_root)
+                report.append("**Suggested Immediate Fix:** Ensure the Cosmos DB Emulator/service is running, correct endpoint/port configured, then rerun tests. Add a pre-test health check to fail fast if unreachable.")
+
+        # Final footer
+        report.append("")
+        report.append("---")
+        report.append(f"*Generated: {datetime.now().strftime('%H:%M:%S')}*")
+
+        return "\n".join(report)
 
     def _make_json_serializable(self, obj):
         """Convert objects to JSON serializable format"""

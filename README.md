@@ -11,15 +11,17 @@ Bug Bash Agent is an intelligent **multi-agent AI system** that automates the co
 
 ### 🎯 Core Capabilities
 
-- **🔄 3-Agent Workflow**: Document Analyzer → Code Generator → Test Runner
+- **🔄 3-Agent Workflow**: Document Analyzer → Code Generator → Test Runner (orchestrated by `workflow.py`)
 - **🌍 Multi-Language Support**: TypeScript, JavaScript, Python, C#, Java, Go, Rust  
-- **🔧 Smart Compilation**: Real-time syntax checking with error analysis and auto-fixing
-- **🧪 Automated Testing**: Complete test generation, execution, and reporting
-- **📊 Advanced Monitoring**: LangSmith integration for workflow tracing and debugging
-- **🎨 Project Scaffolding**: Full project structure generation with best practices
-- **♻️ Error Recovery**: Intelligent compilation feedback loop with selective regeneration
+- **🔧 Smart Compilation Loop**: Iterative build attempts, categorized error analysis, selective regeneration
+- **🧪 Automated Testing**: Test discovery + execution + LLM-driven analysis with dual reports (`test_report.md`, `test_report_ui.md`)
+- **🧠 LLM Quality Insights**: Structured scoring + root cause detection (environment vs logic)
+- **📊 Monitoring & Tracing**: LangSmith integration (optional) for chain/token diagnostics
+- **🎨 Project Scaffolding**: Language-aware generators with best practices baked in
+- **♻️ Resilient Recovery**: Non-blocking agent failures, graceful degradation & validation issue tracking
+- **🧾 UI-Friendly Reporting**: Streamlit app renders consolidated workflow + test summaries
 
-## 🏗️ System Architecture
+## 🏗️ System Architecture (Updated)
 
 ```
                         ┌─── INPUT ────┐
@@ -38,15 +40,15 @@ Bug Bash Agent is an intelligent **multi-agent AI system** that automates the co
                         ┌──────▼───────┐
                         │ 🔨 Code      │
                         │  Generator   │ ──── Multi-Language Support
-                        │              │ ──── Compilation Feedback
-                        │              │ ──── Error Auto-Fixing
+                        │              │ ──── Compilation Feedback Loop
+                        │              │ ──── Selective Regeneration
                         └──────┬───────┘
                                │ Generated Code
                         ┌──────▼───────┐
                         │ 🧪 Test      │
-                        │   Runner     │ ──── Test Execution
-                        │              │ ──── Coverage Analysis
-                        │              │ ──── Report Generation
+                        │   Runner     │ ──── Test Discovery & Execution
+                        │              │ ──── LLM Failure Clustering
+                        │              │ ──── Dual Report Generation (Raw/UI)
                         └──────┬───────┘
                                │
                         ┌──────▼───────┐
@@ -60,9 +62,9 @@ Bug Bash Agent is an intelligent **multi-agent AI system** that automates the co
 
 | Agent | Core Function | Key Outputs | Technologies |
 |-------|---------------|-------------|--------------|
-| **📄 Document Analyzer** | Parse requirements, extract scenarios, detect language | Structured JSON, scenarios list, setup instructions | LangChain, Azure OpenAI |
-| **🔨 Code Generator** | Generate code, compile, fix errors, create projects | Source code, build files, compilation reports | Language-specific compilers, project generators |
-| **🧪 Test Runner** | Execute tests, analyze coverage, generate reports | Test results, coverage data, execution summaries | Jest, pytest, xUnit, cargo test, go test |
+| **📄 Document Analyzer** | Parse requirements, extract scenarios, detect language | Structured JSON, scenarios list, setup instructions | LangChain, Azure OpenAI, PromptyLoader |
+| **🔨 Code Generator** | Generate code, compile, fix errors, create projects | Source code, build files, compilation reports | Language-specific compilers, project generators, selective regeneration |
+| **🧪 Test Runner** | Discover & run tests, analyze failures, generate dual reports | Raw + UI reports, quality score (0-100), root cause detection | NUnit / pytest / Jest / cargo / go test, LLM analysis |
 
 ## 🚀 Quick Start
 
@@ -207,7 +209,7 @@ authentication, and database integration using MongoDB.
 - **Testing**: Cargo test with unit, integration, and doc tests
 - **Build**: Cargo with workspace management and feature flags
 
-## 📁 Project Structure
+## 📁 Project Structure (High-Level)
 
 ```
 bugbashagent/
@@ -227,7 +229,7 @@ bugbashagent/
 │   ├── project_generators/ # Language-specific project scaffolding
 │   ├── parsing/           # Content and structure parsing
 │   └── file_management/   # File creation and management
-├── prompts/               # AI prompt templates
+├── prompts/               # AI prompt templates (loaded via Prompty loader)
 │   ├── code_generator/   # Code generation prompts
 │   ├── document_analyzer/# Analysis prompts  
 │   └── test_runner/     # Testing prompts
@@ -235,13 +237,16 @@ bugbashagent/
 │   └── languages/       # Language-specific prompt strategies
 ├── config_package/      # Configuration and version management
 ├── factories/          # Factory patterns for prompt generation
-├── workflow_outputs/   # Generated project outputs
-├── main.py            # Application entry point
+├── workflow_outputs/   # Generated project outputs & test artifacts
+├── streamlit_app.py    # Rich UI for running & inspecting workflows
+├── ui_preview.py       # Static styling preview (design reference)
+├── main.py            # CLI application entry point
 ├── workflow.py        # Multi-agent workflow orchestrator
+├── UI_ENHANCEMENT_SUMMARY.md  # UI improvement documentation
 └── requirements.txt   # Python dependencies
 ```
 
-## 🔄 Workflow Process
+## 🔄 Workflow Process (Execution Model)
 
 ### 1. Document Analysis Phase
 - **Input Processing**: Supports text, file uploads (.txt, .pdf, .docx), and URLs
@@ -257,14 +262,15 @@ bugbashagent/
 - **Selective Regeneration**: Only regenerates code sections with compilation errors
 - **Multi-Attempt Strategy**: Up to 3 compilation attempts with progressive error fixing
 
-### 3. Test Execution Phase
-- **Test Discovery**: Automatic identification and categorization of generated tests
-- **Environment Setup**: Language-specific test environment configuration
-- **Comprehensive Execution**: Full test suite execution with detailed logging
-- **Coverage Analysis**: Code coverage measurement and reporting
-- **Results Analysis**: Detailed test outcome analysis with failure investigation
+### 3. Test Execution & Analysis Phase
+- **Discovery**: Pattern-based file + framework inference
+- **Execution**: Language dispatcher (e.g., `dotnet test`, `pytest`, `go test`)
+- **Resilience**: Always returns structured summary even on failures
+- **LLM Analysis**: Generates comprehensive + UI-focused reports
+- **Root Cause Heuristics**: Detects common infra issues (e.g., connection refused)
+- **Artifacts**: `test_results.json`, `test_report.md`, `test_report_ui.md`
 
-## 📊 Output Structure
+## 📊 Output Structure & Generated Reports
 
 Each workflow run creates a timestamped project directory:
 
@@ -310,7 +316,7 @@ workflow_outputs/project_name_YYYYMMDD_HHMMSS/
 - **Error Tracking**: Full error context preservation and analysis
 - **Performance Metrics**: Response times, token usage, and success rates
 
-## 🔍 Troubleshooting
+## 🔍 Troubleshooting & Quality Signals
 
 ### Common Issues
 
@@ -340,6 +346,24 @@ Enable detailed logging by setting environment variable:
 ```bash
 export LANGCHAIN_VERBOSE=true
 python main.py
+```
+
+## 🧹 Repository Maintenance & Cleanup
+
+Recent cleanup completed:
+- **Removed 6 empty placeholder files**: `demo_ui.py`, `demo_test_reports.py`, `launch_ui.py`, `launch_ui.bat`, `UI_README.md`, `verify_scenario_logic.py`
+- **Cleaned unused imports**: Removed `LanguageBestPracticesManager` and `LanguageConfig` from test_runner, `trace_agent_execution` from base_agent
+- **Eliminated unused variables**: Removed `workflow_history` from AgentWorkflow class
+- **Enhanced UI test report generator**: Quality score normalization (0-100), root cause detection, improved messaging
+- **Streamlined architecture documentation**: Updated README to reflect current execution model and file structure
+- **Project size optimization**: Reduced from 99 to 93 files (excluding .venv/.git)
+
+### Static Analysis Tools
+
+For ongoing maintenance, use:
+```bash
+pip install vulture
+vulture . --min-confidence 70  # Detect unused code
 ```
 
 ## 🤝 Contributing
@@ -391,7 +415,7 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 **🚀 Built with ❤️ using LangChain, Azure OpenAI, and modern AI engineering practices**
 
-*Transform your requirements into production-ready code across 7 programming languages with intelligent compilation feedback and comprehensive testing.*
+*Transform requirements into production-ready code across 7 programming languages with intelligent compilation feedback, resilient execution, and LLM-enhanced quality insights.*
 | **📄 Document Analyzer** | Analyze requirements and extract structured information | JSON with scenarios, language detection, setup instructions |
 | **🔨 Code Generator** | Generate complete projects with compilation validation | Source code, build files, project structure, compilation reports |
 | **🧪 Test Runner** | Execute tests and generate comprehensive reports | Test results, coverage analysis, execution summaries |

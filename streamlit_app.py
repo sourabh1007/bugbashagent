@@ -1,9 +1,18 @@
 #!/usr/bin/env python3
 """
-Streamlit UI for Multi-Agent Code Development Workflow
+Professional Multi-Agent Code Development Workflow UI
 
-This application provides a web interface for monitoring and interacting with
-the multi-agent workflow system including Document Analyzer, Code Generator, and Test Runner.
+🎯 Enterprise-Grade Streamlit Interface for AI-Powered Software Development
+✨ Real-time agent monitoring, live progress tracking, and comprehensive results visualization
+🚀 Perfect for demonstrations and production deployments
+
+Features:
+- Real-time workflow execution monitoring
+- Professional dashboard with live metrics
+- Interactive agent status tracking
+- Advanced file processing capabilities
+- Modern UI with animations and professional styling
+- Comprehensive error handling and user feedback
 """
 
 import os
@@ -11,8 +20,11 @@ import json
 import time
 import threading
 import tempfile
-from datetime import datetime
-from typing import Dict, Any, List, Optional
+import queue
+import asyncio
+from datetime import datetime, timedelta
+from typing import Dict, Any, List, Optional, Tuple
+import uuid
 
 # Only import streamlit when we know we're in the right context
 try:
@@ -23,14 +35,579 @@ except ImportError:
     st = None
 
 # Import data visualization libraries
+import re
+
+def clean_html_content(text: str) -> str:
+    """
+    Clean HTML tags from text content to prevent HTML code from being displayed as raw text.
+    
+    Args:
+        text: String that may contain HTML tags
+        
+    Returns:
+        Clean text with HTML tags removed and whitespace normalized
+    """
+    if not text or not isinstance(text, str):
+        return str(text) if text else ""
+    
+    # Check if the text contains HTML tags
+    if '<' in text and '>' in text:
+        # Remove HTML tags completely
+        clean_text = re.sub(r'<[^>]*>', '', text)
+        # Replace HTML entities
+        clean_text = clean_text.replace('&nbsp;', ' ').replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
+        # Replace multiple whitespace with single space
+        clean_text = re.sub(r'\s+', ' ', clean_text).strip()
+        # If after cleaning we have very little meaningful content, return a default message
+        if len(clean_text.strip()) < 10 or not clean_text.strip():
+            return "Processing..."
+        return clean_text
+    
+    return text
 try:
     import pandas as pd
     import plotly.express as px
     import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
     PLOTTING_AVAILABLE = True
 except ImportError:
     PLOTTING_AVAILABLE = False
-    pd = px = go = None
+    pd = px = go = make_subplots = None
+
+
+def load_professional_css():
+    """Load enterprise-grade CSS styling for professional demo appearance"""
+    st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    
+    /* Global Styling */
+    .stApp {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    }
+    
+    /* Main Header */
+    .main-header {
+        font-size: 3.5rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        text-align: center;
+        margin: 2rem 0;
+        padding: 1rem 0;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    /* Workflow Chain Visualization */
+    .workflow-chain {
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        border-radius: 16px;
+        padding: 2rem;
+        margin: 2rem 0;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+    
+    /* Agent Cards */
+    .agent-card {
+        background: #ffffff;
+        padding: 2rem;
+        border-radius: 16px;
+        border: 1px solid #e2e8f0;
+        margin: 1.5rem 0;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        position: relative;
+        transition: all 0.3s ease;
+        overflow: hidden;
+    }
+    
+    .agent-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+    
+    .agent-card::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        height: 100%;
+        width: 6px;
+        background: linear-gradient(135deg, #10b981, #059669);
+        border-radius: 0 4px 4px 0;
+    }
+    
+    /* Status Cards */
+    .status-card {
+        background: #ffffff;
+        padding: 1.5rem;
+        border-radius: 12px;
+        text-align: center;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .status-card:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 8px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .status-card.running {
+        background: linear-gradient(135deg, #fef3c7, #fde68a);
+        border-color: #f59e0b;
+    }
+    
+    .status-card.success {
+        background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+        border-color: #10b981;
+    }
+    
+    .status-card.error {
+        background: linear-gradient(135deg, #fee2e2, #fecaca);
+        border-color: #ef4444;
+    }
+    
+    .status-card.pending {
+        background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+        border-color: #64748b;
+    }
+    
+    /* Metric Cards */
+    .metric-card {
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        padding: 2rem;
+        border-radius: 16px;
+        text-align: center;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .metric-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+        border-radius: 16px 16px 0 0;
+    }
+    
+    .metric-value {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: #1e293b;
+        margin: 0.5rem 0;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .metric-label {
+        font-size: 0.875rem;
+        color: #64748b;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+    }
+    
+    /* Progress Bars */
+    .progress-container {
+        background: #f1f5f9;
+        border-radius: 12px;
+        padding: 1rem;
+        margin: 1rem 0;
+        border: 1px solid #e2e8f0;
+    }
+    
+    .progress-bar {
+        height: 12px;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+        border-radius: 6px;
+        transition: width 0.5s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .progress-bar::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+        animation: shimmer 2s infinite;
+    }
+    
+    @keyframes shimmer {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(100%); }
+    }
+    
+    /* Real-time Updates */
+    .live-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #10b981;
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+    
+    .live-dot {
+        width: 8px;
+        height: 8px;
+        background: #10b981;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
+    }
+    
+    /* Alert Boxes */
+    .alert-success {
+        background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+        border: 1px solid #10b981;
+        border-radius: 12px;
+        padding: 1rem;
+        margin: 1rem 0;
+        color: #166534;
+    }
+    
+    .alert-warning {
+        background: linear-gradient(135deg, #fef3c7, #fde68a);
+        border: 1px solid #f59e0b;
+        border-radius: 12px;
+        padding: 1rem;
+        margin: 1rem 0;
+        color: #92400e;
+    }
+    
+    .alert-error {
+        background: linear-gradient(135deg, #fee2e2, #fecaca);
+        border: 1px solid #ef4444;
+        border-radius: 12px;
+        padding: 1rem;
+        margin: 1rem 0;
+        color: #dc2626;
+    }
+    
+    /* Input Styling */
+    .stTextInput > div > div > input {
+        border-radius: 12px;
+        border: 2px solid #e2e8f0;
+        padding: 1rem;
+        font-size: 1rem;
+        transition: all 0.2s ease;
+    }
+    
+    .stTextInput > div > div > input:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    /* Button Styling */
+    .stButton > button {
+        border-radius: 12px;
+        font-weight: 600;
+        padding: 0.75rem 2rem;
+        border: none;
+        transition: all 0.2s ease;
+        font-size: 1rem;
+    }
+    
+    .stButton > button[kind="primary"] {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    
+    .stButton > button[kind="primary"]:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 8px 15px -3px rgba(0, 0, 0, 0.2);
+    }
+    
+    /* Sidebar Styling */
+    .css-1d391kg {
+        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        border-right: 1px solid #e2e8f0;
+    }
+    
+    /* Hide Streamlit Branding */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 4px;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        border-radius: 4px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(135deg, #5a67d8, #6b46c1);
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+
+def create_real_time_monitor():
+    """Create a real-time monitoring system for agent workflows"""
+    if 'monitor_data' not in st.session_state:
+        st.session_state.monitor_data = {
+            'start_time': None,
+            'current_agent': None,
+            'agent_progress': {},
+            'workflow_status': 'ready',
+            'metrics': {
+                'total_tokens': 0,
+                'execution_time': 0,
+                'success_rate': 0,
+                'files_generated': 0
+            },
+            'timeline': [],
+            'error_log': []
+        }
+    return st.session_state.monitor_data
+
+
+def update_agent_status(agent_name: str, status: str, progress: float = 0, message: str = ""):
+    """Update real-time agent status for monitoring"""
+    monitor = create_real_time_monitor()
+    
+    if monitor['start_time'] is None:
+        monitor['start_time'] = datetime.now()
+    
+    monitor['current_agent'] = agent_name
+    monitor['agent_progress'][agent_name] = {
+        'status': status,
+        'progress': progress,
+        'message': message,
+        'timestamp': datetime.now(),
+        'duration': (datetime.now() - monitor['start_time']).total_seconds()
+    }
+    
+    # Add to timeline
+    monitor['timeline'].append({
+        'timestamp': datetime.now(),
+        'agent': agent_name,
+        'status': status,
+        'message': message,
+        'progress': progress
+    })
+    
+    # Update workflow status
+    if status == 'error':
+        monitor['workflow_status'] = 'error'
+        monitor['error_log'].append({
+            'timestamp': datetime.now(),
+            'agent': agent_name,
+            'message': message
+        })
+    elif status == 'running':
+        monitor['workflow_status'] = 'running'
+    elif status == 'success' and progress >= 100:
+        monitor['workflow_status'] = 'success'
+
+
+def render_professional_header():
+    """Render the professional main header for Bug Bash Agent"""
+    st.markdown("""
+    <div class="bug-bash-header">
+        <div class="brand-container">
+            <div class="brand-icon-large">🔍</div>
+            <div class="brand-content">
+                <h1 class="main-header">Bug Bash Agent</h1>
+                <p class="brand-tagline-main">Your intelligent assistant for smarter bug bashes</p>
+            </div>
+        </div>
+        <div class="problem-statement">
+            <p class="problem-text">
+                Automate and augment your bug bash process with AI-powered test scenario generation and execution. 
+                Transform time-consuming manual testing into comprehensive, scalable product validation.
+            </p>
+        </div>
+        <div class="live-indicator" style="justify-content: center; margin-top: 1.5rem;">
+            <div class="live-dot"></div>
+            <span>AI Testing Assistant Active</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def render_workflow_visualization():
+    """Render interactive workflow chain with real-time status"""
+    monitor = create_real_time_monitor()
+    
+    # Bug Bash Agent definitions with testing-focused descriptions
+    agents = [
+        {
+            'name': 'Document Analyzer',
+            'icon': '�',
+            'description': 'Setup Guide Analysis & Test Scenario Extraction',
+            'color': '#667eea'
+        },
+        {
+            'name': 'Code Generator', 
+            'icon': '⚙️',
+            'description': 'Automated Test Script Generation & Compilation',
+            'color': '#f093fb'
+        },
+        {
+            'name': 'Test Runner',
+            'icon': '🔍', 
+            'description': 'Bug Bash Execution & Comprehensive Reporting',
+            'color': '#4facfe'
+        }
+    ]
+    
+    st.markdown("""
+    <div class="workflow-chain">
+        <h3 style="text-align: center; color: #1e293b; margin-bottom: 2rem; font-weight: 700;">
+            🔄 AI Workflow Pipeline
+        </h3>
+    """, unsafe_allow_html=True)
+    
+    cols = st.columns(len(agents))
+    
+    for idx, (col, agent) in enumerate(zip(cols, agents)):
+        with col:
+            # Get agent status
+            agent_status = monitor['agent_progress'].get(agent['name'], {})
+            status = agent_status.get('status', 'pending')
+            progress = agent_status.get('progress', 0)
+            message = agent_status.get('message', 'Ready')
+            
+            # Status styling
+            status_class = 'pending'
+            status_emoji = '⏳'
+            if status == 'running':
+                status_class = 'running'
+                status_emoji = '🔄'
+            elif status == 'success':
+                status_class = 'success' 
+                status_emoji = '✅'
+            elif status == 'error':
+                status_class = 'error'
+                status_emoji = '❌'
+            
+            st.markdown(f"""
+            <div class="status-card {status_class}">
+                <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">{agent['icon']}</div>
+                <h4 style="margin: 0.5rem 0; color: #1e293b; font-weight: 600;">{agent['name']}</h4>
+                <p style="font-size: 0.875rem; color: #64748b; margin: 0.5rem 0;">{agent['description']}</p>
+                <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-top: 1rem;">
+                    <span style="font-size: 1.2rem;">{status_emoji}</span>
+                    <span style="font-weight: 600; text-transform: uppercase; font-size: 0.75rem;">{status}</span>
+                </div>
+                {f'<div style="margin-top: 0.5rem; font-size: 0.75rem; color: #64748b;">{message}</div>' if message != 'Ready' else ''}
+                {f'''
+                <div class="progress-container" style="margin-top: 1rem;">
+                    <div class="progress-bar" style="width: {progress}%;"></div>
+                    <div style="text-align: center; font-size: 0.75rem; font-weight: 600; margin-top: 0.5rem;">{progress:.0f}%</div>
+                </div>
+                ''' if status == 'running' else ''}
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Arrow between agents (except for the last one)
+            if idx < len(agents) - 1:
+                st.markdown("""
+                <div style="text-align: center; margin: 1rem 0;">
+                    <span style="font-size: 2rem; color: #64748b;">→</span>
+                </div>
+                """, unsafe_allow_html=True)
+    
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+def render_live_metrics_dashboard():
+    """Render real-time metrics dashboard"""
+    monitor = create_real_time_monitor()
+    
+    st.markdown("""
+    <div style="margin: 2rem 0 1rem 0;">
+        <h3 style="color: #1e293b; font-weight: 700; margin-bottom: 1rem;">📊 Live Performance Metrics</h3>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Calculate metrics
+    total_agents = 3
+    completed_agents = len([a for a in monitor['agent_progress'].values() if a.get('status') == 'success'])
+    running_agents = len([a for a in monitor['agent_progress'].values() if a.get('status') == 'running']) 
+    failed_agents = len([a for a in monitor['agent_progress'].values() if a.get('status') == 'error'])
+    
+    overall_progress = (completed_agents / total_agents) * 100 if total_agents > 0 else 0
+    
+    execution_time = 0
+    if monitor['start_time']:
+        execution_time = (datetime.now() - monitor['start_time']).total_seconds()
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-label">Overall Progress</div>
+            <div class="metric-value">{overall_progress:.0f}%</div>
+            <div style="font-size: 0.75rem; color: #64748b;">{completed_agents}/{total_agents} Agents Complete</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-label">Execution Time</div>
+            <div class="metric-value">{execution_time:.0f}s</div>
+            <div style="font-size: 0.75rem; color: #64748b;">Real-time Duration</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        status_color = "#10b981" if failed_agents == 0 else "#ef4444" if failed_agents > 0 else "#f59e0b"
+        status_text = "Healthy" if failed_agents == 0 else f"{failed_agents} Failed" if failed_agents > 0 else "Running"
+        
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-label">System Status</div>
+            <div class="metric-value" style="color: {status_color};">{status_text}</div>
+            <div style="font-size: 0.75rem; color: #64748b;">Agent Health</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col4:
+        files_generated = monitor['metrics'].get('files_generated', 0)
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-label">Files Generated</div>
+            <div class="metric-value">{files_generated}</div>
+            <div style="font-size: 0.75rem; color: #64748b;">Project Output</div>
+        </div>
+        """, unsafe_allow_html=True)
 
 
 def process_uploaded_file(uploaded_file) -> str:
@@ -120,7 +697,7 @@ class StreamlitWorkflowRunner:
         self.total_steps = 3
         
     def initialize_workflow(self):
-        """Initialize the workflow with LLM clients"""
+        """Initialize the workflow with LLM clients and set up real-time monitoring"""
         try:
             # Import workflow components only when needed
             from workflow import AgentWorkflow
@@ -145,9 +722,37 @@ class StreamlitWorkflowRunner:
             # Create workflow
             self.workflow = AgentWorkflow(llm, code_llm=code_llm)
             
-            # Set up callbacks
+            # Set up enhanced callbacks for real-time monitoring
             self.workflow.set_status_callback(self._workflow_status_callback)
             self.workflow.set_agent_status_callback(self._agent_status_callback)
+            
+            # Initialize agent tracking
+            self.agent_statuses = {
+                "Document Analyzer": {
+                    "status": "pending",
+                    "message": "Waiting to start...",
+                    "progress": 0.0,
+                    "last_updated": datetime.now(),
+                    "start_time": None,
+                    "end_time": None
+                },
+                "Code Generator": {
+                    "status": "pending", 
+                    "message": "Waiting to start...",
+                    "progress": 0.0,
+                    "last_updated": datetime.now(),
+                    "start_time": None,
+                    "end_time": None
+                },
+                "Test Runner": {
+                    "status": "pending",
+                    "message": "Waiting to start...", 
+                    "progress": 0.0,
+                    "last_updated": datetime.now(),
+                    "start_time": None,
+                    "end_time": None
+                }
+            }
             
             return True
             
@@ -179,22 +784,79 @@ class StreamlitWorkflowRunner:
     def _workflow_status_callback(self, workflow_status: str, message: str = "", 
                                 current_agent: str = None, current_step: int = None, 
                                 total_steps: int = None):
-        """Callback for workflow status updates"""
+        """Enhanced callback for workflow status updates with detailed tracking"""
         self.workflow_status = workflow_status
         self.current_agent = current_agent
         if current_step is not None:
             self.current_step = current_step
         if total_steps is not None:
             self.total_steps = total_steps
+            
+        # Log workflow status changes for debugging
+        if st and hasattr(st, 'write'):
+            try:
+                # Update session state for UI refresh if available
+                if hasattr(st, 'session_state') and hasattr(st.session_state, 'workflow_runner'):
+                    st.session_state.workflow_status_update_time = datetime.now()
+            except:
+                pass  # Ignore session state errors
     
     def _agent_status_callback(self, agent_name: str, status: str, message: str = "", progress: float = None):
-        """Callback for individual agent status updates"""
-        self.agent_statuses[agent_name] = {
+        """Enhanced callback for individual agent status updates with timing and progress tracking"""
+        current_time = datetime.now()
+        
+        # Get existing agent status or create new one
+        if agent_name not in self.agent_statuses:
+            self.agent_statuses[agent_name] = {
+                "status": "pending",
+                "message": "",
+                "progress": 0.0,
+                "last_updated": current_time,
+                "start_time": None,
+                "end_time": None,
+                "execution_time": 0.0
+            }
+        
+        current_agent_status = self.agent_statuses[agent_name]
+        previous_status = current_agent_status.get("status", "pending")
+        
+        # Track timing
+        if status == "starting" and previous_status == "pending":
+            current_agent_status["start_time"] = current_time
+        elif status in ["success", "error", "failed"] and current_agent_status.get("start_time"):
+            current_agent_status["end_time"] = current_time
+            execution_time = (current_time - current_agent_status["start_time"]).total_seconds()
+            current_agent_status["execution_time"] = execution_time
+        
+        # Update status information
+        current_agent_status.update({
             "status": status,
             "message": message,
-            "progress": progress or 0.0,
-            "last_updated": datetime.now()
-        }
+            "progress": progress if progress is not None else current_agent_status.get("progress", 0.0),
+            "last_updated": current_time
+        })
+        
+        # Enhanced progress calculation
+        if status == "running" and progress is None:
+            # Auto-increment progress for running agents without explicit progress
+            current_progress = current_agent_status.get("progress", 0.0)
+            if current_progress < 90.0:  # Don't go above 90% without explicit completion
+                current_agent_status["progress"] = min(current_progress + 5.0, 90.0)
+        elif status == "success":
+            current_agent_status["progress"] = 100.0
+        elif status == "starting":
+            current_agent_status["progress"] = 5.0
+        
+        # Try to trigger UI update if in Streamlit context
+        try:
+            if st and hasattr(st, 'session_state') and hasattr(st.session_state, 'workflow_runner'):
+                st.session_state.agent_status_update_time = current_time
+                # Force a rerun if auto-refresh is enabled
+                if getattr(st.session_state, 'auto_refresh', False) and self.is_running:
+                    # Use a more gentle rerun approach
+                    pass
+        except:
+            pass  # Ignore session state errors
     
     def get_current_status(self):
         """Get current workflow and agent status"""
@@ -214,10 +876,21 @@ def setup_page_config():
         return
         
     st.set_page_config(
-        page_title="Multi-Agent Code Development",
-        page_icon="🤖",
+        page_title="Bug Bash Agent - Intelligent Testing Assistant",
+        page_icon="🔍",
         layout="wide",
-        initial_sidebar_state="expanded"
+        initial_sidebar_state="expanded",
+        menu_items={
+            'Get Help': 'https://github.com/sourabh1007/bugbashagent',
+            'Report a bug': 'https://github.com/sourabh1007/bugbashagent/issues',
+            'About': """
+            # Bug Bash Agent
+            **Your intelligent assistant for smarter bug bashes.**
+            
+            Automate and augment your bug bash process with AI-powered 
+            test scenario generation and execution.
+            """
+        }
     )
 
 
@@ -233,17 +906,93 @@ def load_custom_css():
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
     
-    /* Main Header */
+    /* Bug Bash Agent Header Styles */
+    .bug-bash-header {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+        border-radius: 20px;
+        padding: 3rem 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .bug-bash-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(45deg, #3b82f6 0%, #8b5cf6 25%, #ec4899 50%, #f59e0b 75%, #10b981 100%);
+        opacity: 0.1;
+        animation: gradient-shift 10s ease infinite;
+    }
+    
+    @keyframes gradient-shift {
+        0%, 100% { transform: translateX(-100%) rotate(0deg); }
+        50% { transform: translateX(100%) rotate(180deg); }
+    }
+    
+    .brand-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+        position: relative;
+        z-index: 2;
+    }
+    
+    .brand-icon-large {
+        font-size: 4rem;
+        filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+        animation: pulse-glow 3s ease-in-out infinite;
+    }
+    
+    @keyframes pulse-glow {
+        0%, 100% { transform: scale(1); filter: drop-shadow(0 4px 8px rgba(59, 130, 246, 0.3)); }
+        50% { transform: scale(1.05); filter: drop-shadow(0 6px 12px rgba(139, 92, 246, 0.5)); }
+    }
+    
+    .brand-content {
+        text-align: left;
+    }
+    
     .main-header {
-        font-size: 3rem;
-        font-weight: 700;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        font-size: 3.5rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
+        margin: 0;
+        line-height: 1.1;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .brand-tagline-main {
+        font-size: 1.25rem;
+        color: #94a3b8;
+        font-weight: 500;
+        margin: 0.5rem 0 0 0;
+        font-style: italic;
+    }
+    
+    .problem-statement {
         text-align: center;
-        margin-bottom: 2rem;
-        padding: 1rem 0;
+        max-width: 800px;
+        margin: 0 auto 1rem auto;
+        position: relative;
+        z-index: 2;
+    }
+    
+    .problem-text {
+        font-size: 1.1rem;
+        color: #cbd5e1;
+        line-height: 1.6;
+        font-weight: 400;
+        margin: 0;
     }
     
     .subtitle {
@@ -342,6 +1091,235 @@ def load_custom_css():
         background: #f1f5f9;
         color: #475569;
         border: 1px solid #cbd5e1;
+    }
+    
+    /* Agent Progress Bar Styles */
+    .agent-progress-container {
+        width: 100%;
+    }
+    
+    .agent-progress-bar {
+        width: 100%;
+        height: 8px;
+        background-color: #e5e7eb;
+        border-radius: 4px;
+        overflow: hidden;
+        position: relative;
+    }
+    
+    .agent-progress-fill {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .agent-progress-animation {
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        animation: progress-shine 2s infinite;
+    }
+    
+    @keyframes progress-shine {
+        0% {
+            left: -100%;
+        }
+        100% {
+            left: 100%;
+        }
+    }
+    
+    /* Enhanced Progress Container for Workflow */
+    .progress-container {
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    
+    .progress-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+    }
+    
+    .progress-label {
+        font-weight: 600;
+        color: #1e293b;
+        font-size: 1.1rem;
+    }
+    
+    .progress-percentage {
+        font-weight: 700;
+        color: #3b82f6;
+        font-size: 1.1rem;
+    }
+    
+    .progress-bar {
+        width: 100%;
+        height: 12px;
+        background-color: #e5e7eb;
+        border-radius: 6px;
+        overflow: hidden;
+        margin-bottom: 0.75rem;
+    }
+    
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+        border-radius: 6px;
+        transition: width 0.5s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .progress-animation {
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+        animation: progress-shine 2s infinite;
+    }
+    
+    .progress-details {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.9rem;
+        color: #64748b;
+    }
+    
+    .progress-status {
+        font-weight: 500;
+        color: #3b82f6;
+    }
+    
+    /* Getting Started Card */
+    .getting-started-card {
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        border-radius: 16px;
+        padding: 2rem;
+        margin: 2rem 0;
+        border: 1px solid #0ea5e9;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    
+    .getting-started-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .getting-started-icon {
+        font-size: 2.5rem;
+    }
+    
+    .getting-started-header h3 {
+        color: #0c4a6e;
+        font-weight: 700;
+        font-size: 1.5rem;
+        margin: 0;
+    }
+    
+    .getting-started-content p {
+        color: #0369a1;
+        font-size: 1.1rem;
+        line-height: 1.6;
+        margin-bottom: 1.5rem;
+    }
+    
+    .getting-started-steps {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .getting-started-step {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.6);
+        border-radius: 10px;
+        border: 1px solid rgba(14, 165, 233, 0.2);
+    }
+    
+    .step-number {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        background: linear-gradient(135deg, #0ea5e9, #0284c7);
+        color: white;
+        border-radius: 50%;
+        font-weight: 700;
+        font-size: 0.9rem;
+    }
+    
+    .step-text {
+        color: #0c4a6e;
+        font-weight: 500;
+        font-size: 1rem;
+    }
+    
+    /* Configuration Panel Styles */
+    .config-header {
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        border-radius: 12px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    
+    .config-section {
+        background: #ffffff;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+    
+    .config-status-success {
+        background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+        border: 1px solid #10b981;
+        color: #065f46;
+        padding: 0.75rem;
+        border-radius: 8px;
+        margin: 0.5rem 0;
+        font-weight: 500;
+    }
+    
+    .config-status-warning {
+        background: linear-gradient(135deg, #fef3c7, #fde68a);
+        border: 1px solid #f59e0b;
+        color: #92400e;
+        padding: 0.75rem;
+        border-radius: 8px;
+        margin: 0.5rem 0;
+        font-weight: 500;
+    }
+    
+    .config-status-error {
+        background: linear-gradient(135deg, #fee2e2, #fecaca);
+        border: 1px solid #ef4444;
+        color: #991b1b;
+        padding: 0.75rem;
+        border-radius: 8px;
+        margin: 0.5rem 0;
+        font-weight: 500;
     }
     
     /* Metric Cards */
@@ -534,20 +1512,23 @@ def render_header():
 
 
 def render_input_section():
-    """Render the enhanced input section for requirements"""
+    """Render the enhanced input section for bug bash setup"""
     st.markdown("""
     <div class="input-section animate-fade-in">
         <h2 style="color: #1e293b; font-weight: 600; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
-            📝 Project Requirements Input
+            � Bug Bash Setup & Documentation Input
         </h2>
+        <p style="color: #64748b; font-size: 1rem; margin-bottom: 1.5rem; line-height: 1.6;">
+            Provide your product documentation, setup guides, or feature descriptions. The AI will analyze them to generate comprehensive test scenarios and execute automated bug bash sessions.
+        </p>
     </div>
     """, unsafe_allow_html=True)
     
     # Input method selection with better styling
     st.markdown("**Choose your preferred input method:**")
     input_method = st.radio(
-        "",
-        ["✍️ Direct Text Input", "📁 File Upload", "📚 Load from Previous Run"],
+        "Input Method Selection",
+        ["✍️ Direct Text Input", "📁 Upload Documentation", "📚 Load Previous Bug Bash"],
         horizontal=True,
         label_visibility="collapsed"
     )
@@ -555,11 +1536,11 @@ def render_input_section():
     requirements = ""
     
     if input_method == "✍️ Direct Text Input":
-        st.markdown("**📝 Enter your project requirements:**")
+        st.markdown("**📝 Enter your product documentation or setup guide:**")
         requirements = st.text_area(
-            "",
+            "Product Documentation Input",
             height=150,
-            placeholder="Describe what you want to build in detail...\n\nExample: 'Create a Python web scraper that extracts product data from e-commerce sites with error handling, rate limiting, and CSV export functionality.'",
+            placeholder="Paste your product documentation, setup guide, or feature description here...\n\nExample: 'We have a new checkout flow feature that allows users to save payment methods, apply discount codes, and choose shipping options. The feature needs comprehensive testing across different user scenarios including guest checkout, registered users, and edge cases like expired cards or invalid codes.'",
             label_visibility="collapsed"
         )
     
@@ -672,15 +1653,27 @@ def render_input_section():
 
 
 def render_agent_status_card(agent_name: str, status: str, output_summary: str = "", 
-                           execution_time: float = 0, step_number: int = 0):
-    """Render a professional status card for an agent"""
+                           execution_time: float = 0, step_number: int = 0, progress: float = None, 
+                           real_time_data: Dict[str, Any] = None):
+    """Render an enhanced professional status card for an agent with real-time progress"""
     
-    # Agent icons mapping
+    # Bug Bash Agent icons mapping with testing focus
     agent_icons = {
-        "Document Analyzer": "📄",
-        "Code Generator": "🔨", 
-        "Test Runner": "🧪"
+        "Document Analyzer": "�",
+        "Code Generator": "⚙️", 
+        "Test Runner": "🔍"
     }
+    
+    # Use real-time data if available
+    if real_time_data:
+        status = real_time_data.get("status", status)
+        progress = real_time_data.get("progress", progress or 0.0)
+        execution_time = real_time_data.get("execution_time", execution_time)
+        last_updated = real_time_data.get("last_updated")
+        real_time_message = real_time_data.get("message", output_summary)
+    else:
+        real_time_message = output_summary
+        last_updated = None
     
     # Determine card style and status badge based on status
     if status == "success":
@@ -688,25 +1681,53 @@ def render_agent_status_card(agent_name: str, status: str, output_summary: str =
         status_badge = "status-badge status-success"
         status_emoji = "✅"
         status_text = "COMPLETED"
+        progress_color = "#10b981"
     elif status == "error" or status == "failed":
         card_class = "agent-card error-card animate-fade-in"
         status_badge = "status-badge status-error"
         status_emoji = "❌"
         status_text = "FAILED"
+        progress_color = "#ef4444"
     elif status == "running":
-        card_class = "agent-card running-card animate-fade-in"
+        card_class = "agent-card running-card animate-fade-in animate-pulse"
         status_badge = "status-badge status-running"
         status_emoji = "🔄"
         status_text = "RUNNING"
+        progress_color = "#3b82f6"
+    elif status == "starting":
+        card_class = "agent-card running-card animate-fade-in"
+        status_badge = "status-badge status-running"
+        status_emoji = "🚀"
+        status_text = "STARTING"
+        progress_color = "#f59e0b"
+    elif status == "queued":
+        card_class = "agent-card pending-card animate-fade-in"
+        status_badge = "status-badge status-pending"
+        status_emoji = "⏳"
+        status_text = "QUEUED"
+        progress_color = "#8b5cf6"
     else:
         card_class = "agent-card pending-card animate-fade-in"
         status_badge = "status-badge status-pending"
         status_emoji = "⏳"
         status_text = "PENDING"
+        progress_color = "#64748b"
     
     agent_icon = agent_icons.get(agent_name, "🤖")
+    progress_value = progress if progress is not None else 0.0
     
-    # Render enhanced card
+    # Format execution time display
+    if execution_time > 0:
+        if execution_time < 60:
+            time_display = f"{execution_time:.1f}s"
+        else:
+            minutes = int(execution_time // 60)
+            seconds = execution_time % 60
+            time_display = f"{minutes}m {seconds:.1f}s"
+    else:
+        time_display = "Not started"
+    
+    # Render enhanced card with progress bar
     with st.container():
         st.markdown(f"""
         <div class="{card_class}">
@@ -722,34 +1743,60 @@ def render_agent_status_card(agent_name: str, status: str, output_summary: str =
                 </div>
             </div>
             
-            <div style="display: flex; align-items: center; gap: 1rem; color: #64748b; font-size: 0.9rem;">
+            {f'''
+            <div class="agent-progress-container" style="margin-bottom: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                    <span style="font-size: 0.85rem; color: #64748b; font-weight: 500;">Progress</span>
+                    <span style="font-size: 0.85rem; color: {progress_color}; font-weight: 600;">{progress_value:.1f}%</span>
+                </div>
+                <div class="agent-progress-bar">
+                    <div class="agent-progress-fill" style="width: {progress_value}%; background-color: {progress_color};">
+                        {f'<div class="agent-progress-animation" style="background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);"></div>' if status == 'running' else ''}
+                    </div>
+                </div>
+            </div>
+            ''' if progress is not None and status in ['running', 'starting', 'success', 'error', 'failed'] else ''}
+            
+            <div style="display: flex; align-items: center; gap: 1rem; color: #64748b; font-size: 0.9rem; flex-wrap: wrap;">
                 <div style="display: flex; align-items: center; gap: 0.25rem;">
                     <span>⏱️</span>
-                    <span>{f"{execution_time:.2f}s" if execution_time > 0 else "Not started"}</span>
+                    <span>{time_display}</span>
                 </div>
                 <div style="display: flex; align-items: center; gap: 0.25rem;">
                     <span>📊</span>
                     <span>Status: {status.title()}</span>
                 </div>
+                {f'''
+                <div style="display: flex; align-items: center; gap: 0.25rem;">
+                    <span>�</span>
+                    <span>Updated: {last_updated.strftime("%H:%M:%S")}</span>
+                </div>
+                ''' if last_updated else ''}
             </div>
         </div>
         """, unsafe_allow_html=True)
         
-        # Display output summary with enhanced styling
-        if output_summary:
-            if "✅" in output_summary:
-                st.success(f"**Success:** {output_summary.replace('✅ ', '')}")
-            elif "❌" in output_summary:
-                st.error(f"**Error:** {output_summary.replace('❌ ', '')}")
-            elif "🔄" in output_summary:
-                st.info(f"**Processing:** {output_summary.replace('🔄 ', '')}")
-            elif "�" in output_summary:
-                st.info(f"**Starting:** {output_summary.replace('� ', '')}")
-            elif "⏳" in output_summary:
-                st.info(f"**Waiting:** {output_summary.replace('⏳ ', '')}")
+        # Display enhanced output summary with real-time message
+        display_message = real_time_message or output_summary
+        if display_message:
+            # Always clean HTML content first
+            clean_message = clean_html_content(display_message)
+            
+            if "✅" in clean_message:
+                st.success(f"**Success:** {clean_message.replace('✅ ', '')}")
+            elif "❌" in clean_message:
+                st.error(f"**Error:** {clean_message.replace('❌ ', '')}")
+            elif "🔄" in clean_message:
+                st.info(f"**Processing:** {clean_message.replace('🔄 ', '')}")
+            elif "🚀" in clean_message:
+                st.info(f"**Starting:** {clean_message.replace('🚀 ', '')}")
+            elif "⏳" in clean_message:
+                st.info(f"**Waiting:** {clean_message.replace('⏳ ', '')}")
             else:
-                with st.expander("📋 Details", expanded=False):
-                    st.text(output_summary)
+                # Only show details if there's meaningful content
+                if clean_message and len(clean_message.strip()) > 0:
+                    with st.expander("📋 Details", expanded=False):
+                        st.text(clean_message)
 
 
 def render_workflow_progress(results: Dict[str, Any], is_running: bool = False, runner_status: Dict[str, Any] = None):
@@ -1030,7 +2077,11 @@ def render_summary_tab(results: Dict[str, Any]):
                 if isinstance(output, dict):
                     st.json(output, expanded=False)
                 else:
-                    st.text(str(output)[:500] + "..." if len(str(output)) > 500 else str(output))
+                    output_str = str(output)
+                    # Clean any HTML content before displaying
+                    clean_output = clean_html_content(output_str)
+                    display_output = clean_output[:500] + "..." if len(clean_output) > 500 else clean_output
+                    st.text(display_output)
     
     # Add test reports highlight section
     render_test_reports_highlight(results)
@@ -1190,7 +2241,8 @@ def render_test_reports_section(output_folder: str):
                         )
                     except json.JSONDecodeError:
                         st.error("Invalid JSON format in test results file")
-                        st.text(content)
+                        clean_content = clean_html_content(content)
+                        st.text(clean_content)
                 
             except Exception as e:
                 st.error(f"Error reading {report_file['name']}: {str(e)}")
@@ -1263,7 +2315,8 @@ def render_outputs_tab(results: Dict[str, Any]):
                         lang = selected_file.split('.')[-1]
                         st.code(content, language=lang)
                     else:
-                        st.text(content)
+                        clean_content = clean_html_content(content)
+                        st.text(clean_content)
                         
                 except Exception as e:
                     st.error(f"Error reading file: {str(e)}")
@@ -1308,6 +2361,366 @@ def render_debug_tab(results: Dict[str, Any]):
             st.error(f"Error checking configuration: {str(e)}")
 
 
+def load_env_config() -> Dict[str, str]:
+    """Load configuration from .env file"""
+    config = {}
+    env_path = os.path.join(os.getcwd(), '.env')
+    
+    if os.path.exists(env_path):
+        try:
+            with open(env_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#') and '=' in line:
+                        key, value = line.split('=', 1)
+                        config[key.strip()] = value.strip()
+        except Exception as e:
+            if st:
+                st.error(f"Error loading .env file: {str(e)}")
+    
+    return config
+
+
+def save_env_config(config: Dict[str, str]) -> bool:
+    """Save configuration to .env file"""
+    env_path = os.path.join(os.getcwd(), '.env')
+    
+    try:
+        with open(env_path, 'w', encoding='utf-8') as f:
+            f.write("# Bug Bash Agent Configuration\n")
+            f.write("# Updated: {}\n\n".format(datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+            
+            # Global Configuration
+            f.write("# Global Configuration\n")
+            global_keys = ['AZURE_OPENAI_API_KEY', 'AZURE_OPENAI_ENDPOINT', 'AZURE_OPENAI_API_VERSION', 
+                          'AZURE_OPENAI_DEPLOYMENT_NAME', 'MODEL_NAME', 'TEMPERATURE', 'MAX_TOKENS']
+            for key in global_keys:
+                if key in config:
+                    f.write(f"{key}={config[key]}\n")
+            
+            f.write("\n# Document Analyzer Agent Configuration\n")
+            doc_keys = [k for k in config.keys() if k.startswith('DOCUMENT_ANALYZER_')]
+            for key in doc_keys:
+                f.write(f"{key}={config[key]}\n")
+            
+            f.write("\n# Code Generator Agent Configuration\n")
+            code_keys = [k for k in config.keys() if k.startswith('CODE_GENERATOR_')]
+            for key in code_keys:
+                f.write(f"{key}={config[key]}\n")
+            
+            f.write("\n# Test Runner Agent Configuration\n")
+            test_keys = [k for k in config.keys() if k.startswith('TEST_RUNNER_')]
+            for key in test_keys:
+                f.write(f"{key}={config[key]}\n")
+            
+            f.write("\n# LangChain Tracing Configuration\n")
+            langchain_keys = [k for k in config.keys() if k.startswith('LANGCHAIN_')]
+            for key in langchain_keys:
+                f.write(f"{key}={config[key]}\n")
+        
+        return True
+    except Exception as e:
+        if st:
+            st.error(f"Error saving .env file: {str(e)}")
+        return False
+
+
+def render_config_panel():
+    """Render the configuration panel for Bug Bash Agent settings"""
+    st.markdown("""
+    <div class="config-header">
+        <h2 style="color: #1e293b; font-weight: 600; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+            ⚙️ Bug Bash Agent Configuration
+        </h2>
+        <p style="color: #64748b; font-size: 1rem; margin-bottom: 1.5rem;">
+            Configure AI agents, Azure OpenAI settings, and LangChain tracing for optimal performance.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Load current configuration
+    config = load_env_config()
+    
+    # Configuration tabs
+    config_tab1, config_tab2, config_tab3 = st.tabs([
+        "🌐 Global Settings", 
+        "🤖 Agent Configuration", 
+        "🔍 LangChain Tracing"
+    ])
+    
+    with config_tab1:
+        render_global_config(config)
+    
+    with config_tab2:
+        render_agent_config(config)
+    
+    with config_tab3:
+        render_tracing_config(config)
+
+
+def render_global_config(config: Dict[str, str]):
+    """Render global configuration settings"""
+    st.subheader("🌐 Global Azure OpenAI Configuration")
+    st.markdown("These settings apply as defaults for all agents unless overridden.")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        api_key = st.text_input(
+            "Azure OpenAI API Key",
+            value=config.get('AZURE_OPENAI_API_KEY', ''),
+            type="password",
+            help="Your Azure OpenAI API key"
+        )
+        
+        endpoint = st.text_input(
+            "Azure OpenAI Endpoint",
+            value=config.get('AZURE_OPENAI_ENDPOINT', ''),
+            help="Your Azure OpenAI endpoint URL"
+        )
+        
+        deployment = st.text_input(
+            "Deployment Name",
+            value=config.get('AZURE_OPENAI_DEPLOYMENT_NAME', ''),
+            help="Azure OpenAI deployment name"
+        )
+    
+    with col2:
+        api_version = st.text_input(
+            "API Version",
+            value=config.get('AZURE_OPENAI_API_VERSION', '2024-02-15-preview'),
+            help="Azure OpenAI API version"
+        )
+        
+        model_name = st.text_input(
+            "Model Name",
+            value=config.get('MODEL_NAME', 'gpt-4o'),
+            help="Model name for the deployment"
+        )
+        
+        temperature = st.slider(
+            "Temperature",
+            min_value=0.0,
+            max_value=2.0,
+            value=float(config.get('TEMPERATURE', '1.0')),
+            step=0.1,
+            help="Controls randomness in responses"
+        )
+        
+        max_tokens = st.number_input(
+            "Max Tokens",
+            min_value=1000,
+            max_value=32000,
+            value=int(config.get('MAX_TOKENS', '8000')),
+            step=1000,
+            help="Maximum tokens in response"
+        )
+    
+    # Update global config
+    if st.button("💾 Save Global Configuration", key="save_global"):
+        config.update({
+            'AZURE_OPENAI_API_KEY': api_key,
+            'AZURE_OPENAI_ENDPOINT': endpoint,
+            'AZURE_OPENAI_DEPLOYMENT_NAME': deployment,
+            'AZURE_OPENAI_API_VERSION': api_version,
+            'MODEL_NAME': model_name,
+            'TEMPERATURE': str(temperature),
+            'MAX_TOKENS': str(max_tokens)
+        })
+        
+        if save_env_config(config):
+            st.success("✅ Global configuration saved successfully!")
+            st.rerun()
+        else:
+            st.error("❌ Failed to save configuration")
+
+
+def render_agent_config(config: Dict[str, str]):
+    """Render individual agent configuration settings"""
+    st.subheader("🤖 Individual Agent Configuration")
+    
+    agent_tab1, agent_tab2, agent_tab3 = st.tabs([
+        "📋 Document Analyzer", 
+        "⚙️ Code Generator", 
+        "🔍 Test Runner"
+    ])
+    
+    with agent_tab1:
+        render_single_agent_config(config, "DOCUMENT_ANALYZER", "Document Analyzer", "📋")
+    
+    with agent_tab2:
+        render_single_agent_config(config, "CODE_GENERATOR", "Code Generator", "⚙️")
+    
+    with agent_tab3:
+        render_single_agent_config(config, "TEST_RUNNER", "Test Runner", "🔍")
+
+
+def render_single_agent_config(config: Dict[str, str], prefix: str, agent_name: str, icon: str):
+    """Render configuration for a single agent"""
+    st.markdown(f"### {icon} {agent_name} Configuration")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        api_key = st.text_input(
+            f"API Key",
+            value=config.get(f'{prefix}_API_KEY', config.get('AZURE_OPENAI_API_KEY', '')),
+            type="password",
+            key=f"{prefix}_api_key",
+            help=f"Azure OpenAI API key for {agent_name}"
+        )
+        
+        endpoint = st.text_input(
+            f"Endpoint",
+            value=config.get(f'{prefix}_ENDPOINT', config.get('AZURE_OPENAI_ENDPOINT', '')),
+            key=f"{prefix}_endpoint",
+            help=f"Azure OpenAI endpoint for {agent_name}"
+        )
+        
+        deployment = st.text_input(
+            f"Deployment Name",
+            value=config.get(f'{prefix}_DEPLOYMENT_NAME', config.get('AZURE_OPENAI_DEPLOYMENT_NAME', '')),
+            key=f"{prefix}_deployment",
+            help=f"Deployment name for {agent_name}"
+        )
+    
+    with col2:
+        api_version = st.text_input(
+            f"API Version",
+            value=config.get(f'{prefix}_API_VERSION', config.get('AZURE_OPENAI_API_VERSION', '2024-02-15-preview')),
+            key=f"{prefix}_api_version",
+            help=f"API version for {agent_name}"
+        )
+        
+        model_name = st.text_input(
+            f"Model Name",
+            value=config.get(f'{prefix}_MODEL_NAME', config.get('MODEL_NAME', 'gpt-4o')),
+            key=f"{prefix}_model",
+            help=f"Model name for {agent_name}"
+        )
+        
+        temperature = st.slider(
+            f"Temperature",
+            min_value=0.0,
+            max_value=2.0,
+            value=float(config.get(f'{prefix}_TEMPERATURE', config.get('TEMPERATURE', '1.0'))),
+            step=0.1,
+            key=f"{prefix}_temp",
+            help=f"Temperature setting for {agent_name}"
+        )
+        
+        max_tokens = st.number_input(
+            f"Max Tokens",
+            min_value=1000,
+            max_value=32000,
+            value=int(config.get(f'{prefix}_MAX_TOKENS', config.get('MAX_TOKENS', '8000'))),
+            step=1000,
+            key=f"{prefix}_tokens",
+            help=f"Max tokens for {agent_name}"
+        )
+    
+    # Save button for this agent
+    if st.button(f"💾 Save {agent_name} Configuration", key=f"save_{prefix.lower()}"):
+        config.update({
+            f'{prefix}_API_KEY': api_key,
+            f'{prefix}_ENDPOINT': endpoint,
+            f'{prefix}_DEPLOYMENT_NAME': deployment,
+            f'{prefix}_API_VERSION': api_version,
+            f'{prefix}_MODEL_NAME': model_name,
+            f'{prefix}_TEMPERATURE': str(temperature),
+            f'{prefix}_MAX_TOKENS': str(max_tokens)
+        })
+        
+        if save_env_config(config):
+            st.success(f"✅ {agent_name} configuration saved successfully!")
+            st.rerun()
+        else:
+            st.error("❌ Failed to save configuration")
+
+
+def render_tracing_config(config: Dict[str, str]):
+    """Render LangChain tracing configuration"""
+    st.subheader("🔍 LangChain Tracing Configuration")
+    st.markdown("Configure LangSmith for monitoring and debugging AI agent interactions.")
+    
+    # Tracing status
+    tracing_enabled = config.get('LANGCHAIN_TRACING_V2', 'false').lower() == 'true'
+    
+    col1, col2 = st.columns([1, 2])
+    
+    with col1:
+        st.markdown("**Current Status:**")
+        if tracing_enabled:
+            st.success("🟢 Tracing Enabled")
+        else:
+            st.warning("🟡 Tracing Disabled")
+    
+    with col2:
+        if tracing_enabled:
+            project_name = config.get('LANGCHAIN_PROJECT', 'BugBashAgent')
+            st.info(f"📊 Project: **{project_name}**")
+    
+    st.markdown("---")
+    
+    # Configuration inputs
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        enable_tracing = st.checkbox(
+            "Enable LangChain Tracing",
+            value=tracing_enabled,
+            help="Enable detailed tracing and monitoring of agent interactions"
+        )
+        
+        langchain_endpoint = st.text_input(
+            "LangChain Endpoint",
+            value=config.get('LANGCHAIN_ENDPOINT', 'https://api.smith.langchain.com'),
+            help="LangSmith API endpoint"
+        )
+    
+    with col2:
+        langchain_api_key = st.text_input(
+            "LangChain API Key",
+            value=config.get('LANGCHAIN_API_KEY', ''),
+            type="password",
+            help="Your LangSmith API key"
+        )
+        
+        langchain_project = st.text_input(
+            "Project Name",
+            value=config.get('LANGCHAIN_PROJECT', 'BugBashAgent'),
+            help="Project name for organizing traces"
+        )
+    
+    # Tracing benefits info
+    with st.expander("🔍 Benefits of LangChain Tracing", expanded=False):
+        st.markdown("""
+        **LangChain Tracing provides:**
+        - 📊 **Real-time Monitoring**: Track agent performance and behavior
+        - 🐛 **Debugging Support**: Identify issues in agent interactions
+        - 📈 **Performance Analytics**: Analyze response times and token usage
+        - 🔄 **Conversation Tracking**: Monitor multi-agent workflows
+        - 💰 **Cost Analysis**: Track API usage and optimize costs
+        """)
+    
+    # Save tracing configuration
+    if st.button("💾 Save Tracing Configuration", key="save_tracing"):
+        config.update({
+            'LANGCHAIN_TRACING_V2': 'true' if enable_tracing else 'false',
+            'LANGCHAIN_ENDPOINT': langchain_endpoint,
+            'LANGCHAIN_API_KEY': langchain_api_key,
+            'LANGCHAIN_PROJECT': langchain_project
+        })
+        
+        if save_env_config(config):
+            st.success("✅ Tracing configuration saved successfully!")
+            if enable_tracing and langchain_api_key:
+                st.info("🔄 Restart the application to apply tracing changes.")
+            st.rerun()
+        else:
+            st.error("❌ Failed to save configuration")
+
+
 def main():
     """Main Streamlit application"""
     # Page setup
@@ -1324,6 +2737,30 @@ def main():
     
     if 'auto_refresh' not in st.session_state:
         st.session_state.auto_refresh = False
+    
+    if 'show_config' not in st.session_state:
+        st.session_state.show_config = False
+    
+    # Configuration Panel Modal
+    if st.session_state.show_config:
+        st.markdown("---")
+        
+        # Configuration panel header with close button
+        col1, col2 = st.columns([4, 1])
+        with col1:
+            st.markdown("## ⚙️ Bug Bash Agent Configuration")
+        with col2:
+            if st.button("✖️ Close", key="close_config"):
+                st.session_state.show_config = False
+                st.rerun()
+        
+        # Render the configuration panel
+        render_config_panel()
+        
+        st.markdown("---")
+        
+        # Don't show the main interface when config is open
+        return
     
     # Enhanced Professional Sidebar
     with st.sidebar:
@@ -1369,6 +2806,13 @@ def main():
             st.session_state.workflow_results = None
             st.session_state.workflow_runner.current_results = None
             st.rerun()
+        
+        st.markdown("---")
+        
+        # Configuration Panel Access
+        st.markdown("**⚙️ Configuration**")
+        if st.button("🔧 Open Configuration Panel", use_container_width=True, help="Configure agents, API keys, and tracing"):
+            st.session_state.show_config = True
         
         st.markdown("---")
         
@@ -1443,7 +2887,7 @@ def main():
     with col1:
         # Main start button with enhanced styling
         is_ready = bool(requirements and not st.session_state.workflow_runner.is_running)
-        button_text = "🚀 Start AI Workflow" if is_ready else ("⏳ Workflow Running..." if st.session_state.workflow_runner.is_running else "📝 Enter Requirements First")
+        button_text = "� Start Bug Bash Analysis" if is_ready else ("⏳ Bug Bash Running..." if st.session_state.workflow_runner.is_running else "� Enter Documentation First")
         
         start_workflow = st.button(
             button_text,
@@ -1466,10 +2910,10 @@ def main():
             with st.expander("📚 Quick Help", expanded=True):
                 st.markdown("""
                 **Getting Started:**
-                1. 📝 Enter your project requirements
-                2. � Click 'Start AI Workflow'
-                3. 👀 Monitor progress in real-time
-                4. 📊 Review results and generated files
+                1. � Enter your product documentation or setup guide
+                2. 🔍 Click 'Start Bug Bash Analysis'
+                3. 👀 Monitor automated testing progress in real-time
+                4. 📊 Review test scenarios, results and bug reports
                 
                 **Tips:**
                 - Be specific in your requirements
@@ -1483,8 +2927,8 @@ def main():
         <div style="background: linear-gradient(90deg, #fef3c7, #fde68a); padding: 1rem; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 1rem 0;">
             <div style="display: flex; align-items: center; gap: 0.5rem;">
                 <span style="font-size: 1.2rem;">🔄</span>
-                <strong>Workflow is actively running...</strong>
-                <span style="margin-left: auto; font-size: 0.9rem; color: #92400e;">Monitor progress below</span>
+                <strong>Bug Bash Analysis is actively running...</strong>
+                <span style="margin-left: auto; font-size: 0.9rem; color: #92400e;">Monitor testing progress below</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -1493,8 +2937,8 @@ def main():
         <div style="background: linear-gradient(90deg, #dcfce7, #bbf7d0); padding: 1rem; border-radius: 8px; border-left: 4px solid #10b981; margin: 1rem 0;">
             <div style="display: flex; align-items: center; gap: 0.5rem;">
                 <span style="font-size: 1.2rem;">✅</span>
-                <strong>Ready to start workflow</strong>
-                <span style="margin-left: auto; font-size: 0.9rem; color: #166534;">Click 'Start AI Workflow' to begin</span>
+                <strong>Ready to start bug bash analysis</strong>
+                <span style="margin-left: auto; font-size: 0.9rem; color: #166534;">Click 'Start Bug Bash Analysis' to begin</span>
             </div>
         </div>
         """, unsafe_allow_html=True)

@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, Callable, Optional
 import os
 from datetime import datetime
-from integrations.langsmith import trace_agent_execution
 
 
 class AgentStatus:

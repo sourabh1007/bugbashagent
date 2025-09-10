@@ -18,7 +18,6 @@ class AgentWorkflow:
         self.code_llm = code_llm or llm
         self.test_llm = test_llm or llm
         self.agents = self._initialize_agents()
-        self.workflow_history = []
         self.output_folder = None
         self.status_callback = None  # Callback for workflow status updates
         self.agent_status_callback = None  # Callback for individual agent updates

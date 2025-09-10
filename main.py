@@ -38,13 +38,6 @@ from config_package import (
 from workflow import AgentWorkflow
 
 
-def get_langsmith_dashboard_url():
-    """Get LangSmith dashboard URL"""
-    try:
-        langsmith_client = LangSmithIntegration()
-        return langsmith_client.get_dashboard_url()
-    except:
-        return "https://smith.langchain.com"
 
 
 def get_user_input():
@@ -272,35 +265,6 @@ def fetch_url_content(url: str) -> str:
         print(f"❌ Error fetching URL {url}: {str(e)}")
         sys.exit(1)
 
-
-def save_results(results, filename="code_development_results.txt"):
-    """Save workflow results to a file"""
-    try:
-        with open(filename, 'w', encoding='utf-8') as f:
-            f.write("LANGCHAIN MULTI-AGENT CODE DEVELOPMENT RESULTS\n")
-            f.write("=" * 60 + "\n\n")
-            
-            f.write(f"Initial Requirements: {results['initial_input']}\n")
-            f.write(f"Workflow Status: {results['workflow_status']}\n\n")
-            
-            for i, agent_output in enumerate(results['agent_outputs'], 1):
-                f.write(f"STEP {i}: {agent_output['agent']}\n")
-                f.write("-" * 30 + "\n")
-                f.write(f"Status: {agent_output['status']}\n")
-                if agent_output['status'] == 'success':
-                    f.write(f"Output:\n{agent_output['output']}\n\n")
-                else:
-                    f.write(f"Error: {agent_output.get('error', 'Unknown error')}\n\n")
-            
-            if results['workflow_status'] == 'completed':
-                f.write("FINAL CODE EXECUTION REPORT\n")
-                f.write("=" * 30 + "\n")
-                f.write(results['final_output'])
-        
-        print(f"📁 Results saved to: {filename}")
-        
-    except Exception as e:
-        print(f"❌ Error saving results: {str(e)}")
 
 
 def main():
