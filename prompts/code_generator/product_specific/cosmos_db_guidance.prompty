@@ -50,6 +50,8 @@ inputs:
 ❌ **Incorrect Async Patterns**: Missing await, wrong Task handling
 ❌ **Wrong Exception Types**: Catching generic exceptions instead of product-specific ones
 ❌ **Invalid Connection**: Wrong connection string format or missing credentials
+❌ **Bulk Item Count**: Use not more than 100 item for bulk operations
+❌ **POJO Item**: Id is mandatory field in a CosmosDb Document
 
 ✅ **VERIFIED PATTERNS TO USE:**
 ✅ Always specify partition key for single-item operations

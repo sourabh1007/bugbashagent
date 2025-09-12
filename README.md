@@ -1,696 +1,316 @@
-# 🤖 Bug Bash Agent - AI-Powered Multi-Language Code Generation
+# 🤖 Bug Bash Agent - AI-Powered Multi-Agent Code Generation System
 
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
 [![LangChain](https://img.shields.io/badge/LangChain-Latest-green.svg)](https://langchain.com)
-[![Azure OpenAI](https://img.shields.io/badge/Azure%20OpenAI-Enabled-orange.svg)](https://azure.microsoft.com/services/cognitive-services/openai-service/)
-[![LangSmith](https://img.shields.io/badge/LangSmith-Tracing-purple.svg)](https://smith.langchain.com)
+[![Azure OpenAI](https://img.shields.io/badge/Azure%20OpenAI-GPT--4-orange.svg)](https://azure.microsoft.com/services/cognitive-services/openai-service/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-UI-red.svg)](https://streamlit.io)
 
-## 📋 Project Introduction
+> **Built with Vibe Coding** - An intuitive, AI-first development approach that transforms requirements into production-ready code through intelligent multi-agent orchestration.
 
-Bug Bash Agent is an intelligent **multi-agent AI system** that automates the complete software development lifecycle from requirements analysis to code generation, compilation, and testing. Built with LangChain and Azure OpenAI, it supports **7 programming languages** and delivers production-ready code with comprehensive error handling and compilation feedback.
+## 🚀 About the Project
 
-### 🎯 Core Capabilities
+Bug Bash Agent is a **cutting-edge multi-agent AI system** engineered for full-stack software development lifecycle automation. Born from vibe coding principles, it seamlessly transforms natural language specifications into production-ready applications across **7 programming languages** with intelligent compilation feedback loops and comprehensive testing automation.
 
-- **🔄 3-Agent Workflow**: Document Analyzer → Code Generator → Test Runner (orchestrated by `workflow.py`)
-- **🌍 Multi-Language Support**: TypeScript, JavaScript, Python, C#, Java, Go, Rust  
-- **🔧 Smart Compilation Loop**: Iterative build attempts, categorized error analysis, selective regeneration
-- **🧪 Automated Testing**: Test discovery + execution + LLM-driven analysis with dual reports (`test_report.md`, `test_report_ui.md`)
-- **🧠 LLM Quality Insights**: Structured scoring + root cause detection (environment vs logic)
-- **📊 Monitoring & Tracing**: LangSmith integration (optional) for chain/token diagnostics
-- **🎨 Project Scaffolding**: Language-aware generators with best practices baked in
-- **♻️ Resilient Recovery**: Non-blocking agent failures, graceful degradation & validation issue tracking
-- **🧾 UI-Friendly Reporting**: Streamlit app renders consolidated workflow + test summaries
+### ⚡ Core Features
 
-## 🏗️ System Architecture (Updated)
+- **🔄 3-Agent Pipeline Architecture**: Document Analyzer → Code Generator → Test Runner
+- **🌍 Multi-Language Code Generation**: TypeScript, JavaScript, Python, C#, Java, Go, Rust
+- **🔧 Intelligent Compilation Loop**: Real-time error detection, categorization, and selective regeneration
+- **🧪 Automated Test Discovery & Execution**: Framework-agnostic testing with LLM-powered failure analysis
+- **📊 Dual Reporting System**: Technical reports + UI-optimized summaries with quality scoring
+- **🎨 Smart Project Scaffolding**: Language-aware project generation with best practices
+- **🔍 Advanced Monitoring**: LangSmith integration for workflow tracing and performance analytics
+- **⚡ Streamlit Web Interface**: Professional UI for interactive workflow management
+- **♻️ Resilient Architecture**: Graceful degradation, error recovery, and non-blocking failures
+
+## 🏗️ System Architecture
 
 ```
-                        ┌─── INPUT ────┐
-                        │ Requirements │
-                        │ Documents    │
-                        │ Specifications│
-                        └──────┬───────┘
-                               │
-                        ┌──────▼───────┐
-                        │ 📄 Document  │ 
-                        │   Analyzer   │ ──── Language Detection
-                        │              │ ──── Scenario Extraction  
-                        │              │ ──── Setup Analysis
-                        └──────┬───────┘
-                               │ JSON Output
-                        ┌──────▼───────┐
-                        │ 🔨 Code      │
-                        │  Generator   │ ──── Multi-Language Support
-                        │              │ ──── Compilation Feedback Loop
-                        │              │ ──── Selective Regeneration
-                        └──────┬───────┘
-                               │ Generated Code
-                        ┌──────▼───────┐
-                        │ 🧪 Test      │
-                        │   Runner     │ ──── Test Discovery & Execution
-                        │              │ ──── LLM Failure Clustering
-                        │              │ ──── Dual Report Generation (Raw/UI)
-                        └──────┬───────┘
-                               │
-                        ┌──────▼───────┐
-                        │   OUTPUT     │
-                        │ Complete     │
-                        │ Project      │
-                        └──────────────┘
+┌─────────────────┐    ┌──────────────────────────────────────────────────────┐
+│   USER INPUT    │    │                 MULTI-AGENT PIPELINE                 │
+│                 │    │                                                      │
+│ • Requirements  │    │  ┌─────────────┐   ┌─────────────┐   ┌─────────────┐ │
+│ • Documents     │────┼─►│ 📄 Document │──►│ 🔨 Code     │──►│ 🧪 Test     │ │
+│ • Specifications│    │  │   Analyzer  │   │  Generator  │   │   Runner    │ │
+└─────────────────┘    │  │             │   │             │   │             │ │
+                       │  │ • Language  │   │ • Multi-    │   │ • Discovery │ │
+┌─────────────────┐    │  │   Detection │   │   Language  │   │ • Execution │ │
+│    STREAMLIT    │    │  │ • Scenario  │   │   Support   │   │ • Analysis  │ │
+│       UI        │◄───┼──│   Extract   │   │ • Compile   │   │ • Reporting │ │
+│                 │    │  │ • Setup     │   │   Feedback  │   │ • Quality   │ │
+│ • Live Monitor  │    │  │   Analysis  │   │ • Auto-Fix  │   │   Scoring   │ │
+│ • Config Panel  │    │  └─────────────┘   └─────────────┘   └─────────────┘ │
+│ • Results View  │    │                                                      │
+└─────────────────┘    └──────────────────────────────────────────────────────┘
+                                                │
+                       ┌─────────────────────────▼──────────────────────────────┐
+                       │                  OUTPUT ARTIFACTS                      │
+                       │                                                        │
+                       │ • Complete Project Structure  • Test Reports          │
+                       │ • Source Code & Build Files   • Quality Analytics     │
+                       │ • Documentation & README      • Execution Logs        │
+                       └────────────────────────────────────────────────────────┘
 ```
 
 ### 🔧 Agent Responsibilities
 
-| Agent | Core Function | Key Outputs | Technologies |
-|-------|---------------|-------------|--------------|
-| **📄 Document Analyzer** | Parse requirements, extract scenarios, detect language | Structured JSON, scenarios list, setup instructions | LangChain, Azure OpenAI, PromptyLoader |
-| **🔨 Code Generator** | Generate code, compile, fix errors, create projects | Source code, build files, compilation reports | Language-specific compilers, project generators, selective regeneration |
-| **🧪 Test Runner** | Discover & run tests, analyze failures, generate dual reports | Raw + UI reports, quality score (0-100), root cause detection | NUnit / pytest / Jest / cargo / go test, LLM analysis |
+| Agent | Primary Function | Key Outputs | Technologies |
+|-------|------------------|-------------|--------------|
+| **📄 Document Analyzer** | Requirements parsing, language detection, scenario extraction | Structured JSON, test scenarios, setup instructions | LangChain, Azure OpenAI GPT-4, PromptyLoader |
+| **🔨 Code Generator** | Multi-language code generation, compilation validation, project scaffolding | Source code, build configurations, compilation reports | Language compilers, project generators, error analysis |
+| **🧪 Test Runner** | Test discovery, execution, failure analysis, quality reporting | Test results, coverage reports, quality scores (0-100) | Framework dispatchers, LLM analysis, dual reporting |
 
-## 🚀 Quick Start
+## 📁 Project Structure & Responsibilities
 
-### Prerequisites
+```
+bugbashagent/
+├── 🎯 main.py                      # CLI entry point for interactive workflows
+├── 🌐 streamlit_app.py            # Professional web UI with real-time monitoring
+├── ⚙️ workflow.py                 # Multi-agent orchestration engine
+├── 
+├── 🤖 agents/                     # Core AI agents with specialized roles
+│   ├── base_agent.py              # Abstract base class with callback support
+│   ├── document_analyzer.py       # Requirements analysis & language detection
+│   ├── code_generator.py          # Multi-language code generation & compilation
+│   └── test_runner.py             # Test execution & intelligent failure analysis
+├── 
+├── 🔌 integrations/               # External service integrations
+│   ├── azure_openai/              # Azure OpenAI client with retry logic
+│   ├── langsmith/                 # LangSmith tracing & monitoring
+│   ├── file_processing/           # Document parsing (PDF, DOCX, TXT)
+│   └── web/                       # Web content extraction utilities
+├── 
+├── 🧬 patterns/                   # Language configuration & patterns
+│   ├── language_config.py         # Central language configuration manager
+│   └── languages/                 # Language-specific configurations
+│       ├── python_config.py       # Python patterns & best practices
+│       ├── typescript_config.py   # TypeScript/Node.js configurations
+│       ├── csharp_config.py       # .NET & C# patterns
+│       ├── java_config.py         # Java & Spring Boot configurations
+│       ├── go_config.py           # Go patterns & conventions
+│       └── rust_config.py         # Rust & Cargo configurations
+├── 
+├── 🛠️ tools/                      # Utility tools & generators
+│   ├── compilation/               # Code compilation & error analysis
+│   ├── project_generators/        # Language-specific project scaffolding
+│   ├── parsing/                   # Content & structure parsing utilities
+│   ├── file_management/           # File operations & directory management
+│   └── language_best_practices_manager.py # Best practices enforcement
+├── 
+├── 📝 prompts/                    # AI prompt templates (Prompty format)
+│   ├── code_generator/            # Code generation prompt templates
+│   │   ├── scenario_generation.prompty    # Scenario-based code generation
+│   │   ├── error_fix_regeneration.prompty # Compilation error fixing
+│   │   └── language_best_practices/       # Language-specific prompts
+│   ├── document_analyzer/         # Requirements analysis prompts
+│   │   └── scenario_extraction.prompty    # Scenario extraction templates
+│   └── test_runner/               # Test execution & analysis prompts
+│       └── test_analysis.prompty          # Test failure analysis
+├── 
+├── 🎨 strategies/                 # Prompt generation strategies
+│   ├── prompt_strategies.py       # Strategy pattern implementations
+│   └── languages/                 # Language-specific prompt strategies
+├── 
+├── 🏭 factories/                  # Factory patterns for prompt generation
+│   └── prompt_factory.py          # Centralized prompt generation
+├── 
+├── ⚙️ config_package/             # Configuration & version management
+│   ├── __init__.py                # Environment variable management
+│   └── package_versions.py        # Language & framework version definitions
+├── 
+└── 📊 workflow_outputs/           # Generated project artifacts
+    └── project_name_YYYYMMDD_HHMMSS/
+        ├── step_01_document_analyzer.txt
+        ├── step_02_code_generator.txt
+        ├── step_03_test_runner.txt
+        ├── test_report.md             # Technical test report
+        ├── test_report_ui.md          # UI-optimized report
+        └── generated_code/            # Complete project structure
+```
 
-- **Python 3.8+**
-- **Azure OpenAI subscription** with API access
-- **Node.js 16+** (for TypeScript/JavaScript projects)
-- **Language-specific toolchains** (optional, for compilation)
+## 🚀 How to Run
 
-### Installation
-
-1. **Clone Repository**
-   ```bash
-   git clone https://github.com/sourabh1007/bugbashagent.git
-   cd bugbashagent
-   ```
-
-2. **Install Dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Environment Setup**
-   
-   Copy the template and configure:
-   ```bash
-   cp .env.template .env
-   ```
-   
-   Edit `.env` with your credentials:
-   ```env
-   # Azure OpenAI Configuration
-   AZURE_OPENAI_API_KEY=your_azure_openai_api_key
-   AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
-   AZURE_OPENAI_API_VERSION=2024-02-15-preview
-   AZURE_OPENAI_DEPLOYMENT_NAME=your_gpt4_deployment_name
-   
-   # Model Configuration  
-   MODEL_NAME=gpt-4
-   TEMPERATURE=0.3
-   
-   # LangSmith Tracing (Optional)
-   LANGCHAIN_API_KEY=your_langsmith_api_key
-   LANGCHAIN_PROJECT=BugBashAgent
-   LANGCHAIN_TRACING_V2=true
-   ```
-
-4. **Run the Application**
-   ```bash
-   python main.py
-   ```
-
-## 💻 Usage
-
-### Interactive Mode
+### 🖥️ CLI Mode (Interactive Terminal)
 
 ```bash
+# Clone repository
+git clone https://github.com/sourabh1007/bugbashagent.git
+cd bugbashagent
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Configure environment
+cp .env.template .env
+# Edit .env with your Azure OpenAI credentials
+
+# Run interactive CLI
 python main.py
 ```
 
-Choose from 3 input options:
-
-1. **📝 Direct Text Input**: Enter requirements directly
-2. **📄 File Upload**: Upload requirements document (.txt, .pdf, .docx)  
-3. **🌐 URL Input**: Provide URL to online requirements
-
-### Example Workflow
-
+**CLI Workflow:**
 ```bash
 🤖 LangChain Multi-Agent Code Development Workflow
 ==================================================
 
 Choose input method:
-1. Enter text directly
-2. Provide local file path  
-3. Provide URL (if supported)
+1. 📝 Enter text directly
+2. 📄 Provide local file path  
+3. 🌐 Provide URL (if supported)
 
 Enter your choice (1/2/3): 1
 
 📝 Enter your requirements:
-Create a TypeScript REST API for user management with CRUD operations, 
-authentication, and database integration using MongoDB.
+> Create a TypeScript REST API for user management with authentication
 
 🔄 Processing with 3-agent workflow...
-✅ Document analysis complete
-✅ Code generation with compilation feedback complete  
-✅ Test execution and reporting complete
+✅ Document analysis complete (15.2s)
+✅ Code generation with compilation complete (42.7s)  
+✅ Test execution and analysis complete (8.9s)
 
-📁 Output saved to: workflow_outputs/user_management_api_20250906_143022/
+📁 Output: workflow_outputs/user_management_api_20250911_143022/
+```
+
+### 🌐 Streamlit Web UI (Professional Interface)
+
+```bash
+# Start Streamlit application
+streamlit run streamlit_app.py
+
+# Or with specific port
+streamlit run streamlit_app.py --server.port 8501
+```
+
+**Streamlit Features:**
+- **🎨 Professional UI**: Modern design with real-time progress tracking
+- **📊 Live Monitoring**: Agent status cards with progress bars and timing
+- **⚙️ Configuration Panel**: Environment variables and agent settings management
+- **📁 File Upload**: Drag-and-drop document processing (PDF, DOCX, TXT)
+- **📈 Analytics Dashboard**: Workflow metrics, success rates, and performance insights
+- **🔍 Results Explorer**: Interactive browsing of generated code and test reports
+- **⏰ Auto-refresh**: Real-time updates during workflow execution
+
+### 🔧 Advanced Configuration Commands
+
+```bash
+# Environment setup with custom configuration
+export AZURE_OPENAI_API_KEY="your_api_key"
+export AZURE_OPENAI_ENDPOINT="https://your-resource.openai.azure.com/"
+export LANGCHAIN_TRACING_V2="true"  # Enable LangSmith tracing
+
+# Development mode with verbose logging
+export LANGCHAIN_VERBOSE="true"
+python main.py
+
+# Custom temperature and model settings
+export TEMPERATURE="0.3"
+export MODEL_NAME="gpt-4"
+python main.py
+
+# Validate language support and configurations
+python -c "
+from patterns.language_config import LanguageConfigManager
+manager = LanguageConfigManager()
+print('Supported Languages:', manager.get_supported_languages())
+print('TypeScript Config:', manager.get_language_config('typescript'))
+"
+
+# Check compilation tools availability
+python -c "
+from tools.compilation.compiler_registry import CompilerRegistry
+registry = CompilerRegistry()
+print('Available Compilers:', registry.get_available_compilers())
+"
+
+# Streamlit with custom configuration
+streamlit run streamlit_app.py --server.port 8080 --server.address 0.0.0.0
+
+# Production deployment with gunicorn (for Streamlit)
+pip install gunicorn
+gunicorn -w 4 -k uvicorn.workers.UvicornWorker streamlit_app:app
+```
+
+### 🐳 Docker Deployment (Optional)
+
+```bash
+# Build Docker image
+docker build -t bugbash-agent .
+
+# Run with environment variables
+docker run -e AZURE_OPENAI_API_KEY="your_key" \
+           -e AZURE_OPENAI_ENDPOINT="your_endpoint" \
+           -p 8501:8501 \
+           bugbash-agent
+
+# Or with environment file
+docker run --env-file .env -p 8501:8501 bugbash-agent
 ```
 
 ## 🌍 Supported Languages
 
-### Fully Supported Languages
+| Language | Version | Build Tool | Test Framework | Features | Status |
+|----------|---------|------------|----------------|----------|---------|
+| **TypeScript** | 5.0+ | npm/yarn/pnpm | Jest + ts-jest | Full type safety, decorators, async/await | ✅ Production |
+| **JavaScript** | ES2020+ | npm/yarn/pnpm | Jest | Modern ES features, Node.js patterns | ✅ Production |
+| **Python** | 3.8+ | pip/poetry | pytest | Type hints, async, dataclasses | ✅ Production |
+| **C#** | .NET 6+ | dotnet | xUnit/NUnit | SOLID principles, dependency injection | ✅ Production |
+| **Java** | 11+ | Maven/Gradle | JUnit 5 | Spring Boot, streams, modern features | ✅ Production |
+| **Go** | 1.19+ | go mod | go test | Goroutines, interfaces, idiomatic Go | ✅ Production |
+| **Rust** | 1.70+ | Cargo | cargo test | Ownership, async, zero-cost abstractions | ✅ Production |
 
-| Language | Version | Build Tool | Test Framework | Compilation | Project Generation |
-|----------|---------|------------|----------------|-------------|-------------------|
-| **TypeScript** | 5.0+ | npm/yarn | Jest + ts-jest | `npx tsc` | ✅ Complete |
-| **JavaScript** | ES2020+ | npm/yarn | Jest | Node.js | ✅ Complete |
-| **Python** | 3.8+ | pip | pytest | py_compile | ✅ Complete |
-| **C#** | .NET 6+ | dotnet | xUnit/NUnit | `dotnet build` | ✅ Complete |
-| **Java** | 11+ | Maven/Gradle | JUnit 5 | `mvn compile` | ✅ Complete |
-| **Go** | 1.19+ | go mod | go test | `go build` | ✅ Complete |
-| **Rust** | 1.70+ | Cargo | cargo test | `cargo build` | ✅ Complete |
-
-### Language-Specific Features
-
-#### TypeScript
-- **Advanced Features**: Full type safety, interfaces, generics, decorators
-- **Frameworks**: Node.js, Express, NestJS patterns
-- **Testing**: Jest with TypeScript integration, comprehensive type testing
-- **Build**: Strict TypeScript compiler with real-time error analysis
-
-#### Python  
-- **Modern Python**: Type hints, async/await, dataclasses, context managers
-- **Frameworks**: FastAPI, Flask, Django patterns with dependency injection
-- **Testing**: pytest with fixtures, parametrized tests, coverage analysis
-- **Packaging**: requirements.txt, setup.py, modern project structure
-
-#### C#
-- **Enterprise Ready**: .NET 6+, dependency injection, Entity Framework
-- **Patterns**: Clean Architecture, SOLID principles, async/await
-- **Testing**: xUnit, NUnit, MSTest with mocking and integration tests
-- **Build**: Full MSBuild integration with NuGet package management
-
-#### Java
-- **Enterprise Java**: Spring Boot, Spring Data, JPA/Hibernate patterns
-- **Modern Features**: Java 11+ features, streams, lambda expressions
-- **Testing**: JUnit 5, Mockito, TestContainers for integration testing
-- **Build**: Maven with multi-module support and dependency management
-
-#### Go
-- **Idiomatic Go**: Goroutines, channels, interfaces, error handling
-- **Frameworks**: Gin, Echo, standard library patterns
-- **Testing**: Native testing with benchmarks, examples, race detection
-- **Build**: Go modules with vendoring and cross-compilation
-
-#### Rust
-- **Systems Programming**: Ownership, borrowing, zero-cost abstractions
-- **Async**: Tokio, async/await, concurrent programming patterns
-- **Testing**: Cargo test with unit, integration, and doc tests
-- **Build**: Cargo with workspace management and feature flags
-
-## 📁 Project Structure (High-Level)
+## 📊 Example Output Structure
 
 ```
-bugbashagent/
-├── agents/                    # Core AI agents
-│   ├── base_agent.py         # Base agent interface
-│   ├── document_analyzer.py  # Requirements analysis agent
-│   ├── code_generator.py     # Code generation agent
-│   └── test_runner.py        # Test execution agent
-├── integrations/             # External service integrations
-│   ├── azure_openai/        # Azure OpenAI client setup
-│   ├── langsmith/           # LangSmith tracing integration
-│   └── file_processing/     # Document processing utilities
-├── patterns/                # Language configuration patterns
-│   └── languages/          # Language-specific configurations
-├── tools/                   # Utility tools and generators
-│   ├── compilation/        # Code compilation and error analysis
-│   ├── project_generators/ # Language-specific project scaffolding
-│   ├── parsing/           # Content and structure parsing
-│   └── file_management/   # File creation and management
-├── prompts/               # AI prompt templates (loaded via Prompty loader)
-│   ├── code_generator/   # Code generation prompts
-│   ├── document_analyzer/# Analysis prompts  
-│   └── test_runner/     # Testing prompts
-├── strategies/           # Prompt generation strategies
-│   └── languages/       # Language-specific prompt strategies
-├── config_package/      # Configuration and version management
-├── factories/          # Factory patterns for prompt generation
-├── workflow_outputs/   # Generated project outputs & test artifacts
-├── streamlit_app.py    # Rich UI for running & inspecting workflows
-├── ui_preview.py       # Static styling preview (design reference)
-├── main.py            # CLI application entry point
-├── workflow.py        # Multi-agent workflow orchestrator
-├── UI_ENHANCEMENT_SUMMARY.md  # UI improvement documentation
-└── requirements.txt   # Python dependencies
+workflow_outputs/ecommerce_api_20250911_143022/
+├── 00_workflow_summary.txt           # Executive summary
+├── step_01_document_analyzer.txt     # Requirements analysis
+├── step_02_code_generator.txt        # Code generation log
+├── step_03_test_runner.txt           # Test execution results
+├── test_report.md                    # Technical test report
+├── test_report_ui.md                 # UI-friendly summary
+├── test_results.json                 # Machine-readable results
+└── generated_code/                   # Complete project
+    ├── src/
+    │   ├── controllers/               # API controllers
+    │   ├── models/                    # Data models
+    │   ├── services/                  # Business logic
+    │   └── utils/                     # Utility functions
+    ├── tests/
+    │   ├── unit/                      # Unit tests
+    │   ├── integration/               # Integration tests
+    │   └── e2e/                       # End-to-end tests
+    ├── package.json                   # Dependencies
+    ├── tsconfig.json                  # TypeScript config
+    ├── jest.config.js                 # Test configuration
+    ├── .gitignore                     # Git ignore rules
+    ├── README.md                      # Project documentation
+    └── docker-compose.yml             # Container orchestration
 ```
 
-## 🔄 Workflow Process (Execution Model)
+## 🔍 Advanced Features
 
-### 1. Document Analysis Phase
-- **Input Processing**: Supports text, file uploads (.txt, .pdf, .docx), and URLs
-- **Content Extraction**: Advanced parsing of requirements and specifications
-- **Language Detection**: Automatic identification of target programming language
-- **Scenario Generation**: Creation of comprehensive test scenarios with categorization
-- **Setup Analysis**: Extraction of dependencies, build requirements, and configuration
-
-### 2. Code Generation Phase
-- **Project Scaffolding**: Complete project structure with language-specific conventions
-- **Smart Code Generation**: Production-ready code with best practices and patterns
-- **Compilation Feedback Loop**: Real-time compilation with error detection and auto-fixing
-- **Selective Regeneration**: Only regenerates code sections with compilation errors
-- **Multi-Attempt Strategy**: Up to 3 compilation attempts with progressive error fixing
-
-### 3. Test Execution & Analysis Phase
-- **Discovery**: Pattern-based file + framework inference
-- **Execution**: Language dispatcher (e.g., `dotnet test`, `pytest`, `go test`)
-- **Resilience**: Always returns structured summary even on failures
-- **LLM Analysis**: Generates comprehensive + UI-focused reports
-- **Root Cause Heuristics**: Detects common infra issues (e.g., connection refused)
-- **Artifacts**: `test_results.json`, `test_report.md`, `test_report_ui.md`
-
-## 📊 Output Structure & Generated Reports
-
-Each workflow run creates a timestamped project directory:
-
-```
-workflow_outputs/project_name_YYYYMMDD_HHMMSS/
-├── step_01_document_analyzer.txt     # Analysis results and scenarios
-├── step_02_code_generator.txt        # Generation details and compilation reports
-├── step_03_test_runner.txt           # Test execution results and coverage
-└── generated_code/                   # Complete project structure
-    ├── src/                          # Source code files
-    │   ├── main.ts                   # Main application entry point
-    │   ├── models/                   # Data models and types
-    │   ├── services/                 # Business logic services
-    │   └── utils/                    # Utility functions
-    ├── tests/                        # Test files
-    │   ├── unit/                     # Unit tests
-    │   ├── integration/              # Integration tests
-    │   └── fixtures/                 # Test data and fixtures
-    ├── package.json                  # Dependencies (Node.js)
-    ├── tsconfig.json                 # TypeScript configuration
-    ├── jest.config.js                # Test configuration
-    ├── .gitignore                    # Git ignore rules
-    └── README.md                     # Project documentation
-```
-
-## 🛠️ Advanced Features
-
-### Compilation Feedback Loop
-- **Real-time Error Detection**: Immediate compilation after code generation
-- **Intelligent Error Analysis**: Categorization of syntax, type, and logic errors
-- **Selective Regeneration**: Only regenerates failing code sections
-- **Progressive Fixing**: Multiple attempts with increasingly specific error context
-
-### Multi-Language Project Generation
-- **Language-Specific Scaffolding**: Proper project structure for each language
-- **Dependency Management**: Automatic package and dependency configuration
-- **Build System Integration**: Native build tool configuration (npm, pip, dotnet, etc.)
-- **Testing Framework Setup**: Complete testing environment configuration
-
-### Advanced Monitoring
-- **LangSmith Integration**: Complete workflow tracing and performance monitoring
-- **Detailed Logging**: Comprehensive logs for debugging and optimization
-- **Error Tracking**: Full error context preservation and analysis
-- **Performance Metrics**: Response times, token usage, and success rates
-
-## 🔍 Troubleshooting & Quality Signals
-
-### Common Issues
-
-1. **Azure OpenAI Connection**
-   ```bash
-   # Check your .env configuration
-   AZURE_OPENAI_API_KEY=your_key_here
-   AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
-   ```
-
-2. **Compilation Errors**
-   ```bash
-   # Check language-specific tools installation
-   npm --version    # For TypeScript/JavaScript
-   python --version # For Python
-   dotnet --version # For C#
-   ```
-
-3. **Permission Issues**
-   ```bash
-   # Ensure write permissions for workflow_outputs/
-   chmod 755 workflow_outputs/
-   ```
-
-### Debug Mode
-Enable detailed logging by setting environment variable:
-```bash
-export LANGCHAIN_VERBOSE=true
-python main.py
-```
-
-## 🧹 Repository Maintenance & Cleanup
-
-Recent cleanup completed:
-- **Removed 6 empty placeholder files**: `demo_ui.py`, `demo_test_reports.py`, `launch_ui.py`, `launch_ui.bat`, `UI_README.md`, `verify_scenario_logic.py`
-- **Cleaned unused imports**: Removed `LanguageBestPracticesManager` and `LanguageConfig` from test_runner, `trace_agent_execution` from base_agent
-- **Eliminated unused variables**: Removed `workflow_history` from AgentWorkflow class
-- **Enhanced UI test report generator**: Quality score normalization (0-100), root cause detection, improved messaging
-- **Streamlined architecture documentation**: Updated README to reflect current execution model and file structure
-- **Project size optimization**: Reduced from 99 to 93 files (excluding .venv/.git)
-
-### Static Analysis Tools
-
-For ongoing maintenance, use:
-```bash
-pip install vulture
-vulture . --min-confidence 70  # Detect unused code
-```
+- **🧠 Intelligent Error Recovery**: Automatic compilation error detection and fixing
+- **📈 Quality Scoring**: 0-100 quality scores with detailed breakdowns
+- **🔄 Selective Regeneration**: Only regenerates failing code sections
+- **📊 Real-time Monitoring**: Live progress tracking and performance metrics
+- **🎯 Best Practices Enforcement**: Language-specific coding standards and patterns
+- **🔍 Root Cause Analysis**: Automated failure classification and troubleshooting
+- **📱 Responsive Design**: Works on desktop, tablet, and mobile devices
+- **⚡ Performance Optimized**: Cached CSS, efficient state management, lazy loading
 
 ## 🤝 Contributing
 
-1. **Fork the Repository**
-   ```bash
-   git fork https://github.com/sourabh1007/bugbashagent.git
-   ```
-
-2. **Create Feature Branch**
-   ```bash
-   git checkout -b feature/new-language-support
-   ```
-
-3. **Make Changes and Test**
-   ```bash
-   # Add new language support
-   # Update documentation
-   # Run comprehensive tests
-   ```
-
-4. **Submit Pull Request**
-   - Detailed description of changes
-   - Test results and validation
-   - Updated documentation
-
-### Development Setup
-```bash
-# Install development dependencies
-pip install -r requirements.txt
-
-# Run in development mode with tracing
-export LANGCHAIN_TRACING_V2=true
-python main.py
-```
+1. **Fork & Clone**: `git clone https://github.com/yourusername/bugbashagent.git`
+2. **Create Branch**: `git checkout -b feature/new-language-support`
+3. **Develop & Test**: Add your changes with comprehensive testing
+4. **Submit PR**: Detailed description with examples and validation results
 
 ## 📄 License
 
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
-
-## 🆘 Support & Resources
-
-- **📋 Issues**: [GitHub Issues](https://github.com/sourabh1007/bugbashagent/issues)
-- **📖 Documentation**: This README and inline code documentation
-- **🔍 Monitoring**: [LangSmith Dashboard](https://smith.langchain.com) for workflow tracing
-- **💬 Discussions**: [GitHub Discussions](https://github.com/sourabh1007/bugbashagent/discussions)
+MIT License - see [LICENSE](LICENSE) for full details.
 
 ---
 
-**🚀 Built with ❤️ using LangChain, Azure OpenAI, and modern AI engineering practices**
+**🚀 Engineered with Vibe Coding principles using LangChain, Azure OpenAI GPT-4, and Streamlit**
 
-*Transform requirements into production-ready code across 7 programming languages with intelligent compilation feedback, resilient execution, and LLM-enhanced quality insights.*
-| **📄 Document Analyzer** | Analyze requirements and extract structured information | JSON with scenarios, language detection, setup instructions |
-| **🔨 Code Generator** | Generate complete projects with compilation validation | Source code, build files, project structure, compilation reports |
-| **🧪 Test Runner** | Execute tests and generate comprehensive reports | Test results, coverage analysis, execution summaries |
-
-## 🚀 Setup
-
-### Prerequisites
-
-- **Python 3.8+**
-- **Azure OpenAI** subscription and API key
-- **Node.js** (for TypeScript/JavaScript projects)
-- **Language-specific tools** (optional, based on target languages)
-
-### 1. Clone Repository
-
-```bash
-git clone https://github.com/sourabh1007/bugbashagent.git
-cd bugbashagent
-```
-
-### 2. Install Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### 3. Environment Configuration
-
-Create `.env` file from template:
-
-```bash
-cp .env.template .env
-```
-
-Configure your `.env` file:
-
-```env
-# Azure OpenAI Configuration
-AZURE_OPENAI_API_KEY=your_api_key_here
-AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
-AZURE_OPENAI_API_VERSION=2024-02-15-preview
-AZURE_OPENAI_DEPLOYMENT_NAME=your_deployment_name
-
-# Model Configuration
-MODEL_NAME=gpt-4
-TEMPERATURE=0.3
-
-# LangSmith Tracing (Optional)
-LANGCHAIN_API_KEY=your_langsmith_api_key
-LANGCHAIN_PROJECT=BugBashAgent
-LANGCHAIN_TRACING_V2=true
-```
-
-### 4. Verify Setup
-
-```bash
-python main.py
-```
-
-## 💻 Important Commands
-
-### Basic Usage
-
-```bash
-# Start the interactive workflow
-python main.py
-
-# Run with direct text input (Option 1)
-# Enter requirements directly in the prompt
-
-# Run with file input (Option 2) 
-# Provide path to requirements document (.txt, .pdf, .docx)
-
-# Run with URL input (Option 3)
-# Provide URL to online requirements document
-```
-
-### Advanced Operations
-
-```bash
-# View workflow outputs
-ls workflow_outputs/
-
-# Check latest run results
-cd workflow_outputs/workflow_output_YYYYMMDD_HHMMSS/
-
-# Validate specific language support
-python -c "from patterns.language_config import LanguageConfigManager; print(LanguageConfigManager().get_supported_languages())"
-
-# Run manual compilation test
-cd workflow_outputs/latest_project/ && npm install && npm test
-```
-
-### Development Commands
-
-```bash
-# Install development dependencies for specific languages
-
-# TypeScript/JavaScript
-npm install -g typescript ts-node
-
-# Java
-# Install Maven or Gradle
-
-# C# 
-# Install .NET SDK
-
-# Go
-# Install Go toolchain
-
-# Rust
-# Install Rust toolchain via rustup
-```
-
-## 🌍 Languages Supported
-
-### Fully Supported Languages
-
-| Language | Version | Framework | Build Tool | Test Framework | Compilation | Status |
-|----------|---------|-----------|------------|----------------|-------------|---------|
-| **TypeScript** | 5.0+ | Node.js | npm/yarn | Jest | `npx tsc` | ✅ Active |
-| **JavaScript** | ES2020+ | Node.js | npm/yarn | Jest | Node.js | ✅ Active |
-| **Python** | 3.8+ | - | pip | pytest | py_compile | ✅ Active |
-| **C#** | .NET 6+ | .NET | dotnet | xUnit/NUnit | dotnet build | ✅ Active |
-| **Java** | 11+ | Spring/Maven | Maven/Gradle | JUnit | javac/mvn | ✅ Active |
-| **Go** | 1.19+ | - | go mod | go test | go build | ✅ Active |
-| **Rust** | 1.70+ | - | Cargo | cargo test | cargo build | ✅ Active |
-
-### Language-Specific Features
-
-#### TypeScript
-- **Features**: Full type safety, interfaces, generics, decorators
-- **Frameworks**: Node.js, Express, NestJS
-- **Testing**: Jest with ts-jest, comprehensive type testing
-- **Compilation**: Strict TypeScript compiler with `--noEmit` for validation
-
-#### JavaScript
-- **Features**: ES6+, async/await, modules, modern syntax
-- **Frameworks**: Node.js, Express, React patterns
-- **Testing**: Jest, comprehensive async testing
-- **Compilation**: Node.js syntax validation
-
-#### Python
-- **Features**: Type hints, async/await, dataclasses, modern Python
-- **Frameworks**: FastAPI, Flask, Django patterns
-- **Testing**: pytest, unittest, coverage analysis
-- **Compilation**: Python syntax validation and import checking
-
-#### C#
-- **Features**: .NET 6+, async/await, LINQ, dependency injection
-- **Frameworks**: ASP.NET Core, Entity Framework
-- **Testing**: xUnit, NUnit, MSTest
-- **Compilation**: Full dotnet build with project references
-
-#### Java
-- **Features**: Java 11+, Spring patterns, streams, lambdas
-- **Frameworks**: Spring Boot, Spring Data, JPA
-- **Testing**: JUnit 5, Mockito, integration testing
-- **Compilation**: Maven/Gradle build with dependency management
-
-#### Go
-- **Features**: Goroutines, channels, interfaces, modern Go idioms
-- **Frameworks**: Gin, Echo, standard library patterns
-- **Testing**: Native go test, benchmarks, examples
-- **Compilation**: Go build with module support
-
-#### Rust
-- **Features**: Ownership, borrowing, traits, async/await
-- **Frameworks**: Tokio, Serde, Clap patterns
-- **Testing**: Cargo test, unit and integration tests
-- **Compilation**: Cargo build with full dependency resolution
-
-## 📁 Project Structure
-
-```
-bugbashagent/
-├── agents/                     # Core AI agents
-│   ├── document_analyzer.py    # Requirements analysis agent
-│   ├── code_generator.py       # Code generation agent
-│   └── test_runner.py          # Test execution agent
-├── integrations/               # External service integrations
-│   ├── azure_openai/          # Azure OpenAI client
-│   ├── langsmith/             # LangSmith tracing
-│   └── file_processing/       # Document processing
-├── patterns/                   # Language configurations
-│   └── languages/             # Language-specific configs
-├── tools/                      # Utility tools
-│   ├── compilation/           # Code compilation tools
-│   ├── project_generators/    # Project scaffolding
-│   └── parsing/              # Content parsing tools
-├── prompts/                   # AI prompt templates
-│   ├── code_generator/        # Code generation prompts
-│   ├── document_analyzer/     # Analysis prompts
-│   └── test_runner/          # Testing prompts
-├── strategies/               # Prompt strategies
-│   └── languages/           # Language-specific strategies
-├── workflow_outputs/        # Generated project outputs
-├── main.py                 # Application entry point
-├── workflow.py            # Multi-agent workflow orchestrator
-└── requirements.txt       # Python dependencies
-```
-
-## 🔄 Workflow Process
-
-### Step 1: Document Analysis
-1. **Input Processing**: Accepts text, file paths, or URLs
-2. **Content Extraction**: Parses requirements and specifications
-3. **Language Detection**: Automatically identifies target programming language
-4. **Scenario Generation**: Creates comprehensive test scenarios
-5. **Setup Analysis**: Extracts dependencies and configuration requirements
-
-### Step 2: Code Generation
-1. **Project Scaffolding**: Creates complete project structure
-2. **Code Implementation**: Generates production-ready source code
-3. **Build Configuration**: Sets up build files and dependencies
-4. **Compilation Validation**: Real-time syntax checking and error analysis
-5. **Best Practices**: Applies language-specific coding standards
-
-### Step 3: Test Execution
-1. **Test Discovery**: Identifies and categorizes generated tests
-2. **Environment Setup**: Configures test execution environment
-3. **Test Execution**: Runs comprehensive test suites
-4. **Results Analysis**: Analyzes test outcomes and coverage
-5. **Report Generation**: Creates detailed execution reports
-
-## 📊 Output Structure
-
-Each workflow run creates a timestamped output directory:
-
-```
-workflow_outputs/workflow_output_YYYYMMDD_HHMMSS/
-├── step_01_document_analyzer.txt    # Analysis results
-├── step_02_code_generator.txt       # Generation details  
-├── step_03_test_runner.txt          # Test execution results
-└── generated_code/                  # Complete project
-    ├── src/                        # Source files
-    ├── tests/                      # Test files
-    ├── package.json               # Dependencies (Node.js)
-    ├── tsconfig.json              # TypeScript config
-    ├── requirements.txt           # Python dependencies
-    └── README.md                  # Project documentation
-```
-
-## 🔍 Monitoring & Tracing
-
-### LangSmith Integration
-- **Workflow Tracing**: Complete agent execution tracking
-- **Performance Monitoring**: Response times and token usage
-- **Error Analysis**: Detailed failure investigation
-- **Dashboard Access**: Real-time workflow visualization
-
-### Local Monitoring
-- **File Outputs**: Detailed logs for each agent step
-- **Compilation Reports**: Real-time build status and errors
-- **Test Results**: Comprehensive execution summaries
-- **Debug Information**: Full context preservation for troubleshooting
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/new-language-support`
-3. Make your changes and test thoroughly
-4. Submit a pull request with detailed description
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🆘 Support
-
-- **Issues**: [GitHub Issues](https://github.com/sourabh1007/bugbashagent/issues)
-- **Documentation**: This README and inline code comments
-- **Tracing**: LangSmith dashboard for workflow monitoring
-- **Community**: Contributing guidelines for collaboration
-
----
-
-**Built with ❤️ using LangChain, Azure OpenAI, and modern AI engineering practices.**
+*Transform natural language requirements into production-ready applications across 7 programming languages with intelligent multi-agent orchestration.*
