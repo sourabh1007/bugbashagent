@@ -26,6 +26,49 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional, Tuple
 import uuid
 
+# Constants
+DEFAULT_API_VERSION = '2024-02-15-preview'
+DEFAULT_MODEL_NAME = 'gpt-4o'
+DEFAULT_TEMPERATURE = 1.0
+DEFAULT_MAX_TOKENS = 8000
+DEFAULT_PROJECT_NAME = 'BugBashAgent'
+AUTO_REFRESH_INTERVAL = 2  # seconds
+MAX_PREVIEW_LENGTH = 1000
+MAX_DISPLAY_LENGTH = 500
+WORKFLOW_HISTORY_LIMIT = 3
+MIN_REQUIREMENTS_LENGTH = 10
+FILE_SIZE_LIMIT_MB = 10
+MAX_FILE_CONTENT_DISPLAY = 2000
+
+# Agent configuration
+AGENT_NAMES = ["Document Analyzer", "Code Generator", "Test Runner"]
+AGENT_ICONS = {
+    "Document Analyzer": "📋",
+    "Code Generator": "⚙️", 
+    "Test Runner": "🔍"
+}
+
+# Status configurations
+STATUS_COLORS = {
+    'success': '#10b981',
+    'error': '#ef4444',
+    'failed': '#ef4444',
+    'running': '#3b82f6',
+    'starting': '#f59e0b',
+    'pending': '#64748b',
+    'queued': '#8b5cf6'
+}
+
+STATUS_EMOJIS = {
+    'success': '✅',
+    'error': '❌',
+    'failed': '❌',
+    'running': '🔄',
+    'starting': '🚀',
+    'pending': '⏳',
+    'queued': '⏳'
+}
+
 # Only import streamlit when we know we're in the right context
 try:
     import streamlit as st
@@ -34,8 +77,70 @@ except ImportError:
     STREAMLIT_AVAILABLE = False
     st = None
 
+# Error handling decorator
+def handle_errors(func):
+    """Standardized error handling decorator"""
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            error_msg = f"Error in {func.__name__}: {str(e)}"
+            if st and STREAMLIT_AVAILABLE:
+                st.error(error_msg)
+            else:
+                print(error_msg)
+            return None
+    return wrapper
+
+
+# Input validation functions
+def validate_requirements_input(requirements: str) -> bool:
+    """
+    Validate requirements input.
+    
+    Args:
+        requirements: The input requirements string
+        
+    Returns:
+        bool: True if valid, False otherwise
+    """
+    if not requirements or not isinstance(requirements, str):
+        return False
+    return len(requirements.strip()) >= MIN_REQUIREMENTS_LENGTH
+
+
+def validate_azure_config(config: Dict[str, str]) -> List[str]:
+    """Validate Azure OpenAI configuration"""
+    errors = []
+    required_fields = ['AZURE_OPENAI_API_KEY', 'AZURE_OPENAI_ENDPOINT']
+    
+    for field in required_fields:
+        if not config.get(field):
+            errors.append(f"Missing required field: {field}")
+            
+    # Validate endpoint format
+    endpoint = config.get('AZURE_OPENAI_ENDPOINT', '')
+    if endpoint and not endpoint.startswith(('http://', 'https://')):
+        errors.append("Endpoint must be a valid URL starting with http:// or https://")
+        
+    return errors
+
 # Import data visualization libraries
 import re
+
+# Import pandas and plotly at module level with error handling
+try:
+    import pandas as pd
+    import plotly.express as px
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+    PLOTLY_AVAILABLE = True
+except ImportError:
+    pd = None
+    px = None
+    go = None
+    make_subplots = None
+    PLOTLY_AVAILABLE = False
 
 def clean_html_content(text: str) -> str:
     """
@@ -64,20 +169,12 @@ def clean_html_content(text: str) -> str:
         return clean_text
     
     return text
-try:
-    import pandas as pd
-    import plotly.express as px
-    import plotly.graph_objects as go
-    from plotly.subplots import make_subplots
-    PLOTTING_AVAILABLE = True
-except ImportError:
-    PLOTTING_AVAILABLE = False
-    pd = px = go = make_subplots = None
 
 
+@st.cache_resource
 def load_professional_css():
-    """Load enterprise-grade CSS styling for professional demo appearance"""
-    st.markdown("""
+    """Load enterprise-grade CSS styling for professional demo appearance with caching"""
+    return """
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
     
@@ -372,7 +469,13 @@ def load_professional_css():
         background: linear-gradient(135deg, #5a67d8, #6b46c1);
     }
     </style>
-    """, unsafe_allow_html=True)
+    """
+
+
+def apply_professional_css():
+    """Apply the cached CSS to the page"""
+    css_content = load_professional_css()
+    st.markdown(css_content, unsafe_allow_html=True)
 
 
 def create_real_time_monitor():
@@ -459,30 +562,24 @@ def render_professional_header():
     """, unsafe_allow_html=True)
 
 
-def render_workflow_visualization():
+@handle_errors
+def render_workflow_visualization() -> None:
     """Render interactive workflow chain with real-time status"""
     monitor = create_real_time_monitor()
     
-    # Bug Bash Agent definitions with testing-focused descriptions
+    # Bug Bash Agent definitions with testing-focused descriptions using constants
     agents = [
         {
-            'name': 'Document Analyzer',
-            'icon': '�',
-            'description': 'Setup Guide Analysis & Test Scenario Extraction',
-            'color': '#667eea'
-        },
-        {
-            'name': 'Code Generator', 
-            'icon': '⚙️',
-            'description': 'Automated Test Script Generation & Compilation',
-            'color': '#f093fb'
-        },
-        {
-            'name': 'Test Runner',
-            'icon': '🔍', 
-            'description': 'Bug Bash Execution & Comprehensive Reporting',
-            'color': '#4facfe'
+            'name': agent_name,
+            'icon': AGENT_ICONS[agent_name],
+            'description': {
+                'Document Analyzer': 'Setup Guide Analysis & Test Scenario Extraction',
+                'Code Generator': 'Automated Test Script Generation & Compilation',
+                'Test Runner': 'Bug Bash Execution & Comprehensive Reporting'
+            }[agent_name],
+            'color': ['#667eea', '#f093fb', '#4facfe'][i]
         }
+        for i, agent_name in enumerate(AGENT_NAMES)
     ]
     
     st.markdown("""
@@ -1511,8 +1608,14 @@ def render_header():
     """, unsafe_allow_html=True)
 
 
-def render_input_section():
-    """Render the enhanced input section for bug bash setup"""
+@handle_errors
+def render_input_section() -> str:
+    """
+    Render the enhanced input section for bug bash setup.
+    
+    Returns:
+        str: The requirements text entered by the user
+    """
     st.markdown("""
     <div class="input-section animate-fade-in">
         <h2 style="color: #1e293b; font-weight: 600; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
@@ -1652,17 +1755,11 @@ def render_input_section():
     return requirements
 
 
+@handle_errors
 def render_agent_status_card(agent_name: str, status: str, output_summary: str = "", 
                            execution_time: float = 0, step_number: int = 0, progress: float = None, 
                            real_time_data: Dict[str, Any] = None):
     """Render an enhanced professional status card for an agent with real-time progress"""
-    
-    # Bug Bash Agent icons mapping with testing focus
-    agent_icons = {
-        "Document Analyzer": "�",
-        "Code Generator": "⚙️", 
-        "Test Runner": "🔍"
-    }
     
     # Use real-time data if available
     if real_time_data:
@@ -1675,45 +1772,37 @@ def render_agent_status_card(agent_name: str, status: str, output_summary: str =
         real_time_message = output_summary
         last_updated = None
     
-    # Determine card style and status badge based on status
+    # Determine card style and status badge based on status using constants
+    status_emoji = STATUS_EMOJIS.get(status, "⏳")
+    progress_color = STATUS_COLORS.get(status, "#64748b")
+    
+    # Status-specific configurations
     if status == "success":
         card_class = "agent-card success-card animate-fade-in"
         status_badge = "status-badge status-success"
-        status_emoji = "✅"
         status_text = "COMPLETED"
-        progress_color = "#10b981"
-    elif status == "error" or status == "failed":
+    elif status in ["error", "failed"]:
         card_class = "agent-card error-card animate-fade-in"
         status_badge = "status-badge status-error"
-        status_emoji = "❌"
         status_text = "FAILED"
-        progress_color = "#ef4444"
     elif status == "running":
         card_class = "agent-card running-card animate-fade-in animate-pulse"
         status_badge = "status-badge status-running"
-        status_emoji = "🔄"
         status_text = "RUNNING"
-        progress_color = "#3b82f6"
     elif status == "starting":
         card_class = "agent-card running-card animate-fade-in"
         status_badge = "status-badge status-running"
-        status_emoji = "🚀"
         status_text = "STARTING"
-        progress_color = "#f59e0b"
     elif status == "queued":
         card_class = "agent-card pending-card animate-fade-in"
         status_badge = "status-badge status-pending"
-        status_emoji = "⏳"
         status_text = "QUEUED"
-        progress_color = "#8b5cf6"
     else:
         card_class = "agent-card pending-card animate-fade-in"
         status_badge = "status-badge status-pending"
-        status_emoji = "⏳"
         status_text = "PENDING"
-        progress_color = "#64748b"
     
-    agent_icon = agent_icons.get(agent_name, "🤖")
+    agent_icon = AGENT_ICONS.get(agent_name, "🤖")
     progress_value = progress if progress is not None else 0.0
     
     # Format execution time display
@@ -1729,6 +1818,32 @@ def render_agent_status_card(agent_name: str, status: str, output_summary: str =
     
     # Render enhanced card with progress bar
     with st.container():
+        # Build progress section conditionally to avoid complex f-string logic
+        progress_html = ""
+        if progress is not None and status in ['running', 'starting', 'success', 'error', 'failed']:
+            animation_html = ""
+            if status == "running":
+                animation_html = '<div class="agent-progress-animation" style="background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);"></div>'
+            
+            progress_html = f"""
+            <div class="agent-progress-container" style="margin-bottom: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                    <span style="font-size: 0.85rem; color: #64748b; font-weight: 500;">Progress</span>
+                    <span style="font-size: 0.85rem; color: {progress_color}; font-weight: 600;">{progress_value:.1f}%</span>
+                </div>
+                <div class="agent-progress-bar">
+                    <div class="agent-progress-fill" style="width: {progress_value}%; background-color: {progress_color};">
+                        {animation_html}
+                    </div>
+                </div>
+            </div>
+            """
+        
+        # Build last updated section conditionally
+        last_updated_html = ""
+        if last_updated:
+            last_updated_html = f'<div style="display: flex; align-items: center; gap: 0.25rem;"><span>🕒</span><span>Updated: {last_updated.strftime("%H:%M:%S")}</span></div>'
+        
         st.markdown(f"""
         <div class="{card_class}">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
@@ -1743,19 +1858,7 @@ def render_agent_status_card(agent_name: str, status: str, output_summary: str =
                 </div>
             </div>
             
-            {f'''
-            <div class="agent-progress-container" style="margin-bottom: 1rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
-                    <span style="font-size: 0.85rem; color: #64748b; font-weight: 500;">Progress</span>
-                    <span style="font-size: 0.85rem; color: {progress_color}; font-weight: 600;">{progress_value:.1f}%</span>
-                </div>
-                <div class="agent-progress-bar">
-                    <div class="agent-progress-fill" style="width: {progress_value}%; background-color: {progress_color};">
-                        {f'<div class="agent-progress-animation" style="background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);"></div>' if status == 'running' else ''}
-                    </div>
-                </div>
-            </div>
-            ''' if progress is not None and status in ['running', 'starting', 'success', 'error', 'failed'] else ''}
+            {progress_html}
             
             <div style="display: flex; align-items: center; gap: 1rem; color: #64748b; font-size: 0.9rem; flex-wrap: wrap;">
                 <div style="display: flex; align-items: center; gap: 0.25rem;">
@@ -1766,12 +1869,7 @@ def render_agent_status_card(agent_name: str, status: str, output_summary: str =
                     <span>📊</span>
                     <span>Status: {status.title()}</span>
                 </div>
-                {f'''
-                <div style="display: flex; align-items: center; gap: 0.25rem;">
-                    <span>�</span>
-                    <span>Updated: {last_updated.strftime("%H:%M:%S")}</span>
-                </div>
-                ''' if last_updated else ''}
+                {last_updated_html}
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -1867,7 +1965,7 @@ def render_workflow_progress(results: Dict[str, Any], is_running: bool = False, 
                 elif status in ["error", "failed"]:
                     output_summary = f"❌ {message}" if message else "❌ Execution failed"
                 else:
-                    output_summary = message if message else "⏳ Waiting..."
+                    output_summary = message or "⏳ Waiting..."
                 
                 render_agent_status_card(
                     agent_name, 
@@ -1922,8 +2020,8 @@ def render_workflow_progress(results: Dict[str, Any], is_running: bool = False, 
                             # For Code Generator
                             if output["output"].get("compilation_attempts"):
                                 attempts = len(output["output"]["compilation_attempts"])
-                                successful = sum(1 for a in output["output"]["compilation_attempts"] 
-                                               if a.get("status") == "success")
+                                successful = len([a for a in output["output"]["compilation_attempts"] 
+                                               if a.get("status") == "success"])
                                 if successful > 0:
                                     output_summary = f"✅ Code generated successfully ({attempts} attempts, {successful} successful)"
                                 else:
@@ -2361,6 +2459,7 @@ def render_debug_tab(results: Dict[str, Any]):
             st.error(f"Error checking configuration: {str(e)}")
 
 
+@handle_errors
 def load_env_config() -> Dict[str, str]:
     """Load configuration from .env file"""
     config = {}
@@ -2381,6 +2480,7 @@ def load_env_config() -> Dict[str, str]:
     return config
 
 
+@handle_errors
 def save_env_config(config: Dict[str, str]) -> bool:
     """Save configuration to .env file"""
     env_path = os.path.join(os.getcwd(), '.env')
@@ -2721,25 +2821,34 @@ def render_tracing_config(config: Dict[str, str]):
             st.error("❌ Failed to save configuration")
 
 
+def initialize_session_state() -> None:
+    """
+    Centralized session state initialization.
+    
+    Initializes all required session state variables with their default values
+    to ensure consistent application state across user interactions.
+    """
+    defaults = {
+        'workflow_runner': StreamlitWorkflowRunner(),
+        'workflow_results': None,
+        'auto_refresh': False,
+        'show_config': False
+    }
+    
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+
+
 def main():
     """Main Streamlit application"""
     # Page setup
     setup_page_config()
-    load_custom_css()
+    apply_professional_css()
     render_header()
     
     # Initialize session state
-    if 'workflow_runner' not in st.session_state:
-        st.session_state.workflow_runner = StreamlitWorkflowRunner()
-    
-    if 'workflow_results' not in st.session_state:
-        st.session_state.workflow_results = None
-    
-    if 'auto_refresh' not in st.session_state:
-        st.session_state.auto_refresh = False
-    
-    if 'show_config' not in st.session_state:
-        st.session_state.show_config = False
+    initialize_session_state()
     
     # Configuration Panel Modal
     if st.session_state.show_config:
@@ -2826,7 +2935,7 @@ def main():
             if workflow_folders:
                 st.markdown(f"*{len(workflow_folders)} previous workflows found*")
                 
-                for i, folder in enumerate(workflow_folders[:3]):  # Show last 3
+                for i, folder in enumerate(workflow_folders[:WORKFLOW_HISTORY_LIMIT]):
                     # Parse folder name for better display
                     try:
                         parts = folder.split('_')
@@ -2848,8 +2957,8 @@ def main():
                     ):
                         st.info("📋 Workflow loading will be available in the next update")
                 
-                if len(workflow_folders) > 3:
-                    st.markdown(f"*...and {len(workflow_folders) - 3} more*")
+                if len(workflow_folders) > WORKFLOW_HISTORY_LIMIT:
+                    st.markdown(f"*...and {len(workflow_folders) - WORKFLOW_HISTORY_LIMIT} more*")
             else:
                 st.info("No workflows yet")
         else:
@@ -2943,14 +3052,14 @@ def main():
         </div>
         """, unsafe_allow_html=True)
     
-    # Start workflow
-    if start_workflow and requirements:
-        # Initialize workflow
-        if st.session_state.workflow_runner.initialize_workflow():
-            st.session_state.workflow_runner.run_workflow_async(requirements)
-            st.success("🚀 Workflow started! Monitor progress below.")
-            time.sleep(1)  # Give it a moment to start
-            st.rerun()
+    # Start workflow with validation
+    if start_workflow and validate_requirements_input(requirements) and st.session_state.workflow_runner.initialize_workflow():
+        st.session_state.workflow_runner.run_workflow_async(requirements)
+        st.success("🚀 Workflow started! Monitor progress below.")
+        time.sleep(1)  # Give it a moment to start
+        st.rerun()
+    elif start_workflow and not validate_requirements_input(requirements):
+        st.error("❌ Please provide more detailed requirements (minimum 10 characters).")
     
     # Update results from workflow runner
     if st.session_state.workflow_runner.current_results:
@@ -2969,9 +3078,9 @@ def main():
     if st.session_state.workflow_results:
         render_results_section(st.session_state.workflow_results)
     
-    # Auto-refresh logic
+    # Auto-refresh logic - optimized approach
     if st.session_state.auto_refresh and st.session_state.workflow_runner.is_running:
-        time.sleep(2)
+        time.sleep(AUTO_REFRESH_INTERVAL)
         st.rerun()
 
 
