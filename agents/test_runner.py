@@ -1829,7 +1829,7 @@ class TestRunner(BaseAgent):
             self.log(f"⚠️ Failed to save Markdown report: {str(e)}")
 
     def _save_ui_markdown_report(self, code_path: str, results: Dict[str, Any]) -> None:
-        """Save a UI-optimized Markdown report for Streamlit display"""
+        """Save a UI-optimized Markdown report for web display"""
         try:
             test_results = results.get("test_results", {})
             test_analysis = results.get("test_analysis", {})
@@ -1972,7 +1972,7 @@ class TestRunner(BaseAgent):
 
     def _generate_ui_markdown_report(self, test_results: Dict[str, Any], test_analysis: Dict[str, Any], 
                                    test_discovery: Dict[str, Any], validation_issues: List[str]) -> str:
-        """Generate a UI-optimized Markdown report for Streamlit display"""
+        """Generate a UI-optimized Markdown report for web display"""
         success_rate = test_results.get("success_rate", 0)
         total_tests = test_results.get("total_tests", 0)
         passed_tests = test_results.get("passed_tests", 0)

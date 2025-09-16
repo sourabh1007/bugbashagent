@@ -25,21 +25,22 @@ Bug Bash Copilot is an intelligent **AI-powered assistant** for automated softwa
 - **♻️ Resilient Architecture**: Graceful degradation, error recovery, and non-blocking failures
 ## 🏗️ System Architecture
 
-### Frontend (React.js)
+### Application Stack
+
 ```
 ┌─────────────────────────────────────────────────┐
-│                React Frontend                    │
+│              React Frontend (Port 3000)         │
 │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ │
 │  │   Input     │ │   Progress  │ │   Results   │ │
 │  │  Section    │ │   Monitor   │ │  Dashboard  │ │
 │  └─────────────┘ └─────────────┘ └─────────────┘ │
 │         │               │               │        │
 │         └───────────────┼───────────────┘        │
-│                    WebSocket                     │
+│                    WebSocket + REST API          │
 └─────────────────────┼───────────────────────────┘
                       │
 ┌─────────────────────▼───────────────────────────┐
-│              Backend (Flask + SocketIO)          │
+│        Flask + SocketIO Backend (Port 5000)     │
 │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ │
 │  │  Document   │ │    Code     │ │    Test     │ │
 │  │  Analyzer   │ │  Generator  │ │   Runner    │ │
@@ -50,6 +51,17 @@ Bug Bash Copilot is an intelligent **AI-powered assistant** for automated softwa
 │     Analysis        & Test Cases    & Bug Findings│
 └─────────────────────────────────────────────────┘
 ```
+
+### Technology Stack
+
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| **Frontend** | React 18 + Material-UI | Modern responsive web interface |
+| **Backend** | Flask + SocketIO | RESTful API with real-time WebSocket communication |
+| **AI Framework** | LangChain + Azure OpenAI GPT-4 | Intelligent agent orchestration |
+| **State Management** | React Context + WebSocket | Real-time state synchronization |
+| **Testing** | Framework-agnostic | Jest, pytest, xUnit, JUnit, go test, cargo test |
+| **Monitoring** | LangSmith (optional) | Workflow tracing and analytics |
 
 ### Multi-Agent Pipeline
 1. **Document Analyzer**: Parses requirements and extracts test scenarios
@@ -214,20 +226,35 @@ bugbash-copilot/
 ### CLI Mode
 
 ```bash
-<<<<<<< HEAD
-# Clone repository
-git clone https://github.com/sourabh1007/bugbash-copilot.git
-cd bugbash-copilot
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Configure environment
-cp .env.template .env
-# Edit .env with your Azure OpenAI credentials
-
 # Run interactive CLI
 python main.py --input "your requirements here"
+
+# Or run with interactive prompt
+python main.py
+```
+
+**CLI Workflow:**
+
+```bash
+🤖 Bug Bash Copilot - AI-Powered Quality Assessment
+==================================================
+
+Choose input method:
+1. 📝 Enter text directly
+2. 📄 Provide local file path  
+3. 🌐 Provide URL (if supported)
+
+Enter your choice (1/2/3): 1
+
+📝 Enter your requirements:
+> Create a TypeScript REST API for user management with authentication
+
+🔄 Processing with 3-agent workflow...
+✅ Document analysis complete (15.2s)
+✅ Code generation with compilation complete (42.7s)  
+✅ Test execution and analysis complete (8.9s)
+
+📁 Output: workflow_outputs/user_management_api_20250916_143022/
 ```
 
 ## 🌍 Supported Languages
@@ -299,6 +326,22 @@ The React frontend provides a comprehensive bug bash quality assessment interfac
 
 ## 🔧 Development
 
+### Current Application Interfaces
+
+The Bug Bash Copilot provides two primary interfaces:
+
+1. **🌐 React Web Dashboard** (`http://localhost:3000`)
+   - Modern Material-UI interface with real-time WebSocket updates
+   - Interactive bug analysis with charts and visualizations
+   - Comprehensive workflow monitoring and progress tracking
+   - Multi-format input support (text, file upload, URL)
+
+2. **⌨️ CLI Interface** (`python main.py`)
+   - Interactive command-line tool for direct workflow execution
+   - Perfect for automation, scripting, and headless environments
+   - Full feature parity with web interface
+   - Detailed console output and progress reporting
+
 ### Adding New Languages
 
 1. Create configuration in `patterns/languages/`
@@ -321,6 +364,48 @@ The React frontend provides a comprehensive bug bash quality assessment interfac
 - **🔍 Root Cause Analysis**: Automated failure classification and troubleshooting
 - **📱 Responsive Design**: Works on desktop, tablet, and mobile devices
 - **⚡ Performance Optimized**: Cached CSS, efficient state management, lazy loading
+
+## 🚀 Quick Start
+
+### Option 1: Automated Setup (Recommended)
+
+```bash
+# Windows
+.\setup_frontend.bat
+
+# Linux/Mac  
+./setup_frontend.sh
+```
+
+### Option 2: Manual Setup
+
+```bash
+# 1. Install Python dependencies
+pip install -r requirements.txt
+
+# 2. Setup React frontend
+cd frontend
+npm install
+cd ..
+
+# 3. Configure environment
+cp .env.template .env
+# Edit .env with your Azure OpenAI credentials
+
+# 4. Start backend server
+python backend_server.py
+
+# 5. Start frontend (in another terminal)
+cd frontend && npm start
+```
+
+### Option 3: CLI Only
+
+```bash
+# Install dependencies and run CLI
+pip install -r requirements.txt
+python main.py
+```
 
 ## 🤝 Contributing
 
