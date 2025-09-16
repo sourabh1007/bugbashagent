@@ -1,6 +1,7 @@
 from typing import Dict, Any, List
 import json
 import os
+import re
 from datetime import datetime
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -68,6 +69,120 @@ class DocumentAnalyzer(BaseAgent):
         )
         # Build Runnable pipeline instead of deprecated LLMChain
         self._runnable = self.prompt_template | llm_for_chain | StrOutputParser()
+        
+        # Initialize language normalization mapping
+        self._language_mapping = self._initialize_language_mapping()
+    
+    def _initialize_language_mapping(self) -> Dict[str, str]:
+        """
+        Initialize mapping from various language mentions to standardized language names
+        
+        🎯 PURPOSE: Normalize language identification to ensure consistency across agents
+        ✅ BENEFITS: 
+        - Eliminates "javascript", "JavaScript (Node.js)", "node.js", "JS" variations
+        - Maps all variations to standard names: javascript, typescript, csharp, python, etc.
+        - Ensures other agents can reliably use the language identifier
+        """
+        return {
+            # JavaScript variations
+            'javascript': 'javascript',
+            'js': 'javascript', 
+            'node.js': 'javascript',
+            'node js': 'javascript',
+            'nodejs': 'javascript',
+            'javascript (node.js)': 'javascript',
+            'javascript(node.js)': 'javascript',
+            'node.js (javascript)': 'javascript',
+            'ecmascript': 'javascript',
+            
+            # TypeScript variations
+            'typescript': 'typescript',
+            'ts': 'typescript',
+            'type script': 'typescript',
+            
+            # C# variations
+            'c#': 'csharp',
+            'csharp': 'csharp',
+            'c sharp': 'csharp',
+            '.net': 'csharp',
+            'dotnet': 'csharp',
+            'visual c#': 'csharp',
+            
+            # Python variations
+            'python': 'python',
+            'py': 'python',
+            'python3': 'python',
+            'python 3': 'python',
+            
+            # Java variations
+            'java': 'java',
+            'openjdk': 'java',
+            'oracle java': 'java',
+            
+            # Go variations
+            'go': 'go',
+            'golang': 'go',
+            'go lang': 'go',
+            
+            # Rust variations
+            'rust': 'rust',
+            'rust lang': 'rust',
+            
+            # Other variations that might appear
+            'php': 'php',
+            'ruby': 'ruby',
+            'swift': 'swift',
+            'kotlin': 'kotlin',
+            'scala': 'scala',
+            'dart': 'dart',
+            'cpp': 'cpp',
+            'c++': 'cpp',
+            'c': 'c'
+        }
+    
+    def _normalize_language(self, language: str) -> str:
+        """
+        Normalize language name to standard format used across the system
+        
+        Args:
+            language: Raw language string from LLM (e.g., "JavaScript (Node.js)", "JS", "node.js")
+            
+        Returns:
+            Standardized language name (e.g., "javascript", "typescript", "csharp")
+            
+        Examples:
+            "JavaScript (Node.js)" -> "javascript"
+            "node.js" -> "javascript" 
+            "JS" -> "javascript"
+            "TypeScript" -> "typescript"
+            "C#" -> "csharp"
+        """
+        if not language:
+            return "unknown"
+        
+        # Clean and normalize the input
+        normalized = language.lower().strip()
+        
+        # Remove common prefixes/suffixes
+        normalized = re.sub(r'\s*\([^)]*\)\s*', '', normalized)  # Remove parentheses content
+        normalized = re.sub(r'\s+', ' ', normalized).strip()      # Normalize whitespace
+        
+        # Check direct mapping
+        if normalized in self._language_mapping:
+            result = self._language_mapping[normalized]
+            if result != normalized:
+                self.log(f"🔄 Language normalized: '{language}' -> '{result}'")
+            return result
+        
+        # Check partial matches for compound names
+        for pattern, standard_name in self._language_mapping.items():
+            if pattern in normalized or normalized in pattern:
+                self.log(f"🔄 Language normalized (partial match): '{language}' -> '{standard_name}'")
+                return standard_name
+        
+        # If no match found, log warning and return cleaned version
+        self.log(f"⚠️ Unknown language '{language}', returning as '{normalized}'")
+        return normalized
     
     @trace_agent_execution("Document Analyzer")
     def execute(self, input_data: str) -> Dict[str, Any]:
@@ -222,6 +337,7 @@ class DocumentAnalyzer(BaseAgent):
         ---------------------
         • Required field presence
         • Data type validation
+        • Language name standardization
         • Scenario uniqueness verification
         • Content quality assessment
         • Category distribution analysis
@@ -233,6 +349,13 @@ class DocumentAnalyzer(BaseAgent):
         for field in required_fields:
             if field not in result:
                 raise ValueError(f"Missing required field: {field}")
+        
+        # Normalize language name for consistency across agents
+        original_language = result.get("language", "")
+        normalized_language = self._normalize_language(original_language)
+        if normalized_language != original_language:
+            result["language"] = normalized_language
+            self.log(f"🎯 Language standardized: '{original_language}' -> '{normalized_language}'")
         
         # Validate scenario list
         if not isinstance(result["scenarioList"], list):

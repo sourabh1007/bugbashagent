@@ -1,0 +1,137 @@
+---
+name: Cosmos DB TypeScript SDK Guidance
+description: TypeScript specific guidance for Azure Cosmos DB SDK with strong typing
+authors:
+  - Bug Bash Agent Team
+inputs:
+  version:
+    type: string
+    description: SDK version being targeted
+---
+
+**COSMOS DB TYPESCRIPT SDK SPECIFIC GUIDANCE:**
+
+**🔧 CORE TYPESCRIPT CONCEPTS:**
+- **CosmosClient**: `new CosmosClient({ endpoint, key })` with typed configuration
+- **Database**: `client.database("dbName")` with Database type
+- **Container**: `database.container("containerName")` with Container<T> type
+- **Typed Items**: Define interfaces for your data models
+
+**📋 TYPESCRIPT TYPE DEFINITIONS:**
+```typescript
+import { CosmosClient, Database, Container, ItemResponse, FeedResponse } from "@azure/cosmos";
+
+// Define your data model interface
+interface UserDocument {
+  id: string;
+  userId: string;
+  name: string;
+  email: string;
+  _ts?: number;
+  _etag?: string;
+}
+
+// Client initialization with typed config
+const client: CosmosClient = new CosmosClient({
+  endpoint: process.env.COSMOS_ENDPOINT!,
+  key: process.env.COSMOS_KEY!
+});
+
+const database: Database = client.database("TestDB");
+const container: Container = database.container("Users");
+```
+
+**✅ TYPED CRUD OPERATIONS:**
+```typescript
+// Create with type safety
+const createUser = async (user: Omit<UserDocument, 'id'>): Promise<UserDocument> => {
+  const itemWithId = { ...user, id: crypto.randomUUID() };
+  const { resource }: ItemResponse<UserDocument> = await container.items.create(itemWithId);
+  if (!resource) throw new Error("Failed to create user");
+  return resource;
+};
+
+// Read with type safety
+const getUser = async (id: string, partitionKey: string): Promise<UserDocument | null> => {
+  try {
+    const { resource }: ItemResponse<UserDocument> = await container.item(id, partitionKey).read();
+    return resource || null;
+  } catch (error: any) {
+    if (error.code === 404) return null;
+    throw error;
+  }
+};
+
+// Query with type safety
+const queryUsers = async (queryText: string): Promise<UserDocument[]> => {
+  const querySpec = {
+    query: queryText,
+    parameters: []
+  };
+  const { resources }: FeedResponse<UserDocument> = await container.items.query(querySpec).fetchAll();
+  return resources;
+};
+```
+
+**⚠️ TYPESCRIPT-SPECIFIC CONSIDERATIONS:**
+- **Generic Types**: Use `Container<T>`, `ItemResponse<T>`, `FeedResponse<T>` for type safety
+- **Interface Definition**: Always define interfaces for your document types
+- **Null Checking**: Use strict null checks with TypeScript compiler options
+- **Error Handling**: Type your error handling with proper error types
+
+**🚨 COMMON TYPESCRIPT ERRORS TO AVOID:**
+❌ **Missing Type Annotations**: Not defining interfaces for documents
+❌ **Any Types**: Using `any` instead of proper typed responses
+❌ **Missing Null Checks**: Not handling undefined resources from responses
+❌ **Weak Typing**: Not using generic types for Container and responses
+
+**✅ CLIENT INITIALIZATION PATTERN (for client initialization scenarios):**
+```typescript
+import { CosmosClient, Database, Container } from "@azure/cosmos";
+
+describe("CosmosClient TypeScript Tests", () => {
+  it("should initialize client with proper typing", async () => {
+    // Arrange
+    const endpoint = "https://localhost:8081";
+    const key = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==";
+    
+    // Act
+    const client: CosmosClient = new CosmosClient({ endpoint, key });
+    const accountProperties = await client.readAccount();
+    
+    // Assert
+    expect(client).toBeDefined();
+    expect(accountProperties.resource?.id).toBeDefined();
+    expect(typeof accountProperties.resource?.id).toBe("string");
+  });
+});
+```
+
+**🔧 TYPESCRIPT COMPILER CONFIGURATION:**
+```json
+// tsconfig.json recommendations
+{
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "target": "ES2020",
+    "module": "commonjs",
+    "esModuleInterop": true
+  }
+}
+```
+
+**📦 PACKAGE DEPENDENCIES:**
+```json
+// package.json
+{
+  "dependencies": {
+    "@azure/cosmos": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}
+```

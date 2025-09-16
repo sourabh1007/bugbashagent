@@ -51,7 +51,21 @@ class CodeCompiler:
                 'test_command': 'npm test',
                 'required_files': []
             },
+            'js': {  # Alias for javascript
+                'file_extension': '.js',
+                'project_file': 'package.json',
+                'compile_command': 'node --check',
+                'test_command': 'npm test',
+                'required_files': []
+            },
             'typescript': {
+                'file_extension': '.ts',
+                'project_file': 'package.json',
+                'compile_command': 'npx tsc --noEmit',
+                'test_command': 'npm test',
+                'required_files': ['tsconfig.json']
+            },
+            'ts': {  # Alias for typescript
                 'file_extension': '.ts',
                 'project_file': 'package.json',
                 'compile_command': 'npx tsc --noEmit',
@@ -66,6 +80,13 @@ class CodeCompiler:
                 'required_files': ['pom.xml']
             },
             'go': {
+                'file_extension': '.go',
+                'project_file': 'go.mod',
+                'compile_command': 'go build',
+                'test_command': 'go test',
+                'required_files': ['go.mod']
+            },
+            'golang': {  # Alias for go
                 'file_extension': '.go',
                 'project_file': 'go.mod',
                 'compile_command': 'go build',
@@ -331,13 +352,13 @@ class CodeCompiler:
                 return self._compile_csharp_file(file_path)
             elif language == 'python':
                 return self._compile_python_file(file_path)
-            elif language == 'javascript':
+            elif language == 'javascript' or language == 'js':
                 return self._compile_javascript_file(file_path)
-            elif language == 'typescript':
+            elif language == 'typescript' or language == 'ts':
                 return self._compile_typescript_file(file_path)
             elif language == 'java':
                 return self._compile_java_file(file_path)
-            elif language == 'go':
+            elif language == 'go' or language == 'golang':
                 return self._compile_go_file(file_path)
             elif language == 'rust':
                 return self._compile_rust_file(file_path)

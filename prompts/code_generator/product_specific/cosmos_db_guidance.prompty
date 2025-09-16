@@ -26,6 +26,7 @@ inputs:
 - **C#**: See language-specific C# Cosmos DB guidance for detailed patterns
 - **Python**: See language-specific Python Cosmos DB guidance for detailed patterns  
 - **JavaScript**: See language-specific JavaScript Cosmos DB guidance for detailed patterns
+- **TypeScript**: See language-specific TypeScript Cosmos DB guidance for detailed patterns
 - **Java**: See language-specific Java Cosmos DB guidance for detailed patterns
 - **Go**: See language-specific Go Cosmos DB guidance for detailed patterns
 - **Rust**: See language-specific Rust Cosmos DB guidance for detailed patterns
@@ -59,3 +60,4 @@ inputs:
 ✅ Handle product-specific exceptions for error scenarios
 ✅ Use CreateIfNotExists for database/container setup in tests
 ✅ Include proper using/import statements for Cosmos SDK
+✅ If there is conflict in code, prefer what cosmos db support for example id should be "id", not "Id"
