@@ -58,7 +58,7 @@ def test_integration():
 
 def main():
     """Main setup and verification process"""
-    print("🤖 BugBashAgent LangSmith Integration Setup")
+    print("🤖 Bug Bash Copilot LangSmith Integration Setup")
     print("=" * 50)
     
     # Step 1: Install LangSmith
@@ -74,14 +74,14 @@ def main():
     
     print("\n🎯 Setup Summary:")
     print("✅ LangSmith package installed")
-    print("✅ BugBashAgent integration code added")
+    print("✅ Bug Bash Copilot integration code added")
     if configured:
         print("✅ LangSmith monitoring configured")
         print("🔗 Dashboard: https://smith.langchain.com/projects")
     else:
         print("⚠️ LangSmith monitoring not configured (optional)")
     
-    print("\n🚀 Ready to run BugBashAgent with LangSmith!")
+    print("\n🚀 Ready to run Bug Bash Copilot with LangSmith!")
     return 0
 
 if __name__ == "__main__":

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-LangChain Multi-Agent Code Development Workflow
+Bug Bash Copilot - AI-Powered Code Quality Assessment
 
-This application demonstrates a workflow with 3 agents:
+This application demonstrates a multi-agent workflow for automated bug detection and quality assessment:
 1. Document Analyzer - Analyzes requirements and extracts key information
 2. Code Generator - Generates code based on the analyzed requirements  
-3. Code Executor - Reviews and provides execution guidance for the generated code
+3. Test Runner - Executes comprehensive testing and quality analysis
 
-Each agent passes its output to the next agent in sequence.
+Each agent passes its output to the next agent in sequence for complete quality assessment.
 """
 
 import os
@@ -42,8 +42,8 @@ from workflow import AgentWorkflow
 
 def get_user_input():
     """Get requirements input from user - supports text input or file path"""
-    print("🤖 LangChain Multi-Agent Code Development Workflow")
-    print("=" * 50)
+    print("🤖 Bug Bash Copilot - AI-Powered Quality Assessment")
+    print("=" * 52)
     
     print("\nChoose input method:")
     print("1. Enter text directly")
@@ -294,7 +294,7 @@ def main():
         llm = configure_llm_tracing(llm)
         
         # Create and execute workflow
-        print("🚀 Starting multi-agent code development workflow...")
+        print("🚀 Starting Bug Bash Copilot quality assessment workflow...")
         workflow = AgentWorkflow(llm, code_llm=code_llm)
         results = workflow.execute_workflow(requirements)
 

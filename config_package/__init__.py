@@ -1,5 +1,5 @@
 """
-Configuration package for BugBashAgent
+Configuration package for Bug Bash Copilot
 """
 
 import os
@@ -18,7 +18,7 @@ AZURE_OPENAI_DEPLOYMENT_NAME = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
 LANGCHAIN_TRACING_V2 = os.getenv("LANGCHAIN_TRACING_V2", "true")
 LANGCHAIN_ENDPOINT = os.getenv("LANGCHAIN_ENDPOINT", "https://api.smith.langchain.com")
 LANGCHAIN_API_KEY = os.getenv("LANGCHAIN_API_KEY")
-LANGCHAIN_PROJECT = os.getenv("LANGCHAIN_PROJECT", "BugBashAgent")
+LANGCHAIN_PROJECT = os.getenv("LANGCHAIN_PROJECT", "BugBashCopilot")
 
 # Model settings
 MODEL_NAME = os.getenv("MODEL_NAME", "gpt-35-turbo")

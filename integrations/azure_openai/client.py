@@ -1,7 +1,7 @@
 """
 Azure OpenAI Client Integration
 
-This module provides a centralized Azure OpenAI client for the Bug Bash Agent.
+This module provides a centralized Azure OpenAI client for the Bug Bash Copilot.
 """
 
 import os
@@ -16,7 +16,7 @@ from config_package import (
 
 
 class AzureOpenAIClient:
-    """Centralized Azure OpenAI client for the Bug Bash Agent."""
+    """Centralized Azure OpenAI client for the Bug Bash Copilot."""
 
     def __init__(
         self,

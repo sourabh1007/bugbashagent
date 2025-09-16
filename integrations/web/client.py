@@ -27,7 +27,7 @@ class WebClient:
         self.timeout = timeout
         self.session = requests.Session()
         self.session.headers.update({
-            'User-Agent': 'BugBashAgent/1.0 (Web Content Analyzer)'
+            'User-Agent': 'BugBashCopilot/1.0 (Web Content Analyzer)'
         })
     
     def fetch_url(self, url: str) -> Dict[str, Any]:

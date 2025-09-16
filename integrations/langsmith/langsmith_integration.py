@@ -1,5 +1,5 @@
 """
-LangSmith Integration Module for BugBashAgent
+LangSmith Integration Module for Bug Bash Copilot
 
 This module provides LangSmith tracing and monitoring capabilities for the multi-agent workflow.
 It includes custom decorators, metrics collection, and enhanced logging for better observability.
@@ -75,7 +75,7 @@ except ImportError as e:
     LANGCHAIN_TRACING_V2 = "false"
     LANGCHAIN_ENDPOINT = "https://api.smith.langchain.com"
     LANGCHAIN_API_KEY = None
-    LANGCHAIN_PROJECT = "BugBashAgent"
+    LANGCHAIN_PROJECT = "BugBashCopilot"
 
 
 class LangSmithIntegration:
@@ -83,7 +83,7 @@ class LangSmithIntegration:
     
     def __init__(self):
         self.client = None
-        self.project_name = LANGCHAIN_PROJECT or "BugBashAgent"
+        self.project_name = LANGCHAIN_PROJECT or "BugBashCopilot"
         self.enabled = self._initialize_langsmith()
         
     def _initialize_langsmith(self) -> bool:

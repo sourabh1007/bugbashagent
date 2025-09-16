@@ -81,10 +81,15 @@ class TestRunner(BaseAgent):
         try:
             self.log("🧪 Starting Test Runner Agent...")
             
+            # Initial progress update
+            self.update_progress(15.0, "Initializing test execution environment")
+            
             # Initialize validation issues list to track problems without failing
             validation_issues = []
             
             # Handle different input types with robust error handling
+            self.update_progress(20.0, "Parsing input data from code generator")
+            
             if isinstance(input_data, dict):
                 # Check if this is a full agent result (from workflow) or direct data
                 if "agent" in input_data and "output" in input_data and "status" in input_data:
@@ -150,6 +155,8 @@ class TestRunner(BaseAgent):
                 }
             
             # Extract input parameters with safe defaults and validation
+            self.update_progress(25.0, "Extracting project parameters and validating structure")
+            
             project_files = parsed_data.get("project_files", {})
             raw_language = parsed_data.get("language", "python")
             product_name = parsed_data.get("product_name", "Unknown")
@@ -162,6 +169,8 @@ class TestRunner(BaseAgent):
                 self.log(f"🔄 Normalized language '{raw_language}' to '{language}'")
             
             # Validate inputs with non-failing approach
+            self.update_progress(30.0, f"Validating test environment for {language} project")
+            
             if not code_path or not os.path.exists(code_path):
                 validation_issues.append(f"Invalid or missing code path: {code_path}")
                 # Try to find a suitable code path
@@ -218,6 +227,8 @@ class TestRunner(BaseAgent):
                     self.log(f"    ⚠️ {issue}")
             
             # Step 1: Discover and analyze test structure (with robust error handling)
+            self.update_progress(40.0, "Discovering test files and structure")
+            
             try:
                 test_discovery = self._discover_tests(code_path, language)
                 self.log(f"🔍 Discovered {test_discovery['total_tests']} tests in {test_discovery['test_files_count']} files")
@@ -234,6 +245,8 @@ class TestRunner(BaseAgent):
                 }
             
             # Step 2: Execute tests (with robust error handling)
+            self.update_progress(60.0, f"Executing {test_discovery.get('total_tests', 0)} tests")
+            
             try:
                 test_results = self._execute_tests(code_path, language, test_discovery)
             except Exception as e:
@@ -251,6 +264,8 @@ class TestRunner(BaseAgent):
                 }
             
             # Step 3: Analyze results with LLM (with robust error handling)
+            self.update_progress(80.0, "Analyzing test results with LLM")
+            
             try:
                 test_analysis = self._analyze_test_results_with_llm(
                     test_results, test_discovery, language, product_name, scenario_results
@@ -272,6 +287,8 @@ class TestRunner(BaseAgent):
                 }
             
             # Step 4: Generate comprehensive report (always succeeds with fallback)
+            self.update_progress(90.0, "Generating comprehensive test report")
+            
             try:
                 comprehensive_report = self._generate_comprehensive_report(
                     test_results, test_analysis, test_discovery, language, product_name, code_path
@@ -284,6 +301,8 @@ class TestRunner(BaseAgent):
                 )
             
             # Step 5: Save results (with error handling)
+            self.update_progress(95.0, "Saving test results and reports")
+            
             try:
                 self._save_test_results(code_path, {
                     "test_results": test_results,
@@ -1810,7 +1829,7 @@ class TestRunner(BaseAgent):
             self.log(f"⚠️ Failed to save Markdown report: {str(e)}")
 
     def _save_ui_markdown_report(self, code_path: str, results: Dict[str, Any]) -> None:
-        """Save a UI-optimized Markdown report for Streamlit display"""
+        """Save a UI-optimized Markdown report for web display"""
         try:
             test_results = results.get("test_results", {})
             test_analysis = results.get("test_analysis", {})
@@ -1953,7 +1972,7 @@ class TestRunner(BaseAgent):
 
     def _generate_ui_markdown_report(self, test_results: Dict[str, Any], test_analysis: Dict[str, Any], 
                                    test_discovery: Dict[str, Any], validation_issues: List[str]) -> str:
-        """Generate a UI-optimized Markdown report for Streamlit display"""
+        """Generate a UI-optimized Markdown report for web display"""
         success_rate = test_results.get("success_rate", 0)
         total_tests = test_results.get("total_tests", 0)
         passed_tests = test_results.get("passed_tests", 0)

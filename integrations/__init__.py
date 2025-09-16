@@ -1,7 +1,7 @@
 """
 Integrations Package
 
-This package contains all external system integrations for the Bug Bash Agent.
+This package contains all external system integrations for the Bug Bash Copilot.
 """
 
 from .azure_openai.client import (

@@ -4,12 +4,22 @@
 # Output directories
 workflow_outputs*/
 
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
 # Python cache and compiled files
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 .pytest_cache/
+
+# Node.js dependencies and build
+node_modules/
+build/
+dist/
 
 # VS Code cache and temp files
 .vscode/
@@ -27,7 +37,7 @@ validation_*.py
 fix_*.py
 final_*.py
 
-# Summary and documentation files (auto-generated)
+# Auto-generated documentation files
 *_SUMMARY.md
 *_FIX*.md
 ENHANCED_*.md
