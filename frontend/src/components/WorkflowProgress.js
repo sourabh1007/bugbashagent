@@ -89,49 +89,89 @@ function WorkflowProgress() {
   const runningAgents = state.agents.filter(agent => agent.status === 'running').length;
   const failedAgents = state.agents.filter(agent => agent.status === 'error').length;
   
+  // Calculate overall progress as a percentage
   let overallProgress = (completedAgents / state.totalSteps) * 100;
   
   // Add partial progress for running agents
   if (runningAgents > 0) {
     const runningAgent = state.agents.find(agent => agent.status === 'running');
-    if (runningAgent) {
-      overallProgress += (runningAgent.progress / state.totalSteps);
+    if (runningAgent && runningAgent.progress > 0) {
+      // Add the running agent's progress as a fraction of one agent's worth
+      overallProgress += (runningAgent.progress / 100) * (100 / state.totalSteps);
     }
   }
   
+  // Ensure progress doesn't exceed 100%
   overallProgress = Math.min(overallProgress, 100);
+
+  // Debug logging
+  console.log('Progress Debug:', {
+    completedAgents,
+    runningAgents,
+    totalSteps: state.totalSteps,
+    calculatedProgress: overallProgress,
+    agentStatuses: state.agents.map(a => ({ name: a.name, status: a.status, progress: a.progress }))
+  });
 
   // Calculate execution time
   const startedAgents = state.agents.filter(agent => agent.startTime);
   let executionTime = 0;
   if (startedAgents.length > 0) {
-    const firstStartTime = Math.min(...startedAgents.map(agent => agent.startTime.getTime()));
+    const getTime = (dateValue) => {
+      if (!dateValue) {
+        return Date.now();
+      }
+      if (dateValue instanceof Date) {
+        return dateValue.getTime();
+      }
+      if (typeof dateValue === 'string') {
+        return new Date(dateValue).getTime();
+      }
+      return Date.now();
+    };
+    
+    const firstStartTime = Math.min(...startedAgents.map(agent => getTime(agent.startTime)));
     const now = new Date().getTime();
     const lastEndTime = Math.max(
       ...state.agents
         .filter(agent => agent.endTime)
-        .map(agent => agent.endTime.getTime()),
+        .map(agent => getTime(agent.endTime)),
       now
     );
     executionTime = Math.floor((lastEndTime - firstStartTime) / 1000);
   }
 
   const getStatusText = () => {
-    if (state.workflowStatus === 'completed') return 'Completed';
-    if (state.workflowStatus === 'failed') return 'Failed';
-    if (failedAgents > 0) return `${failedAgents} Failed`;
-    if (runningAgents > 0) return 'Running';
+    if (state.workflowStatus === 'completed') {
+      return 'Completed';
+    }
+    if (state.workflowStatus === 'failed') {
+      return 'Failed';
+    }
+    if (failedAgents > 0) {
+      return `${failedAgents} Failed`;
+    }
+    if (runningAgents > 0) {
+      return 'Running';
+    }
     return 'Ready';
   };
 
   const getStatusColor = () => {
-    if (state.workflowStatus === 'completed') return '#16a34a';
-    if (state.workflowStatus === 'failed' || failedAgents > 0) return '#dc2626';
-    if (runningAgents > 0) return '#ca8a04';
+    if (state.workflowStatus === 'completed') {
+      return '#16a34a';
+    }
+    if (state.workflowStatus === 'failed' || failedAgents > 0) {
+      return '#dc2626';
+    }
+    if (runningAgents > 0) {
+      return '#ca8a04';
+    }
     return '#64748b';
   };
 
-  if (state.workflowStatus === 'idle') {
+  // Always show progress if there's any activity or completion
+  if (state.workflowStatus === 'idle' && completedAgents === 0 && runningAgents === 0 && failedAgents === 0) {
     return null; // Don't show progress until workflow starts
   }
 
@@ -152,11 +192,39 @@ function WorkflowProgress() {
             </Typography>
           </Box>
           
-          <StyledLinearProgress 
-            variant="determinate" 
-            value={overallProgress} 
-            sx={{ mb: 1 }}
-          />
+          <Box sx={{ 
+            width: '100%', 
+            height: '12px', 
+            backgroundColor: '#e5e7eb', 
+            borderRadius: '6px', 
+            overflow: 'hidden',
+            position: 'relative',
+            mb: 1
+          }}>
+            <Box sx={{
+              height: '100%',
+              width: `${overallProgress}%`,
+              background: 'linear-gradient(90deg, #667eea, #764ba2)',
+              borderRadius: '6px',
+              transition: 'width 0.5s ease',
+              position: 'relative',
+              overflow: 'hidden',
+              '&::after': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: '-100%',
+                width: '100%',
+                height: '100%',
+                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
+                animation: overallProgress > 0 && overallProgress < 100 ? 'shimmer 2s infinite' : 'none',
+              },
+              '@keyframes shimmer': {
+                '0%': { transform: 'translateX(-100%)' },
+                '100%': { transform: 'translateX(100%)' },
+              },
+            }} />
+          </Box>
           
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant="body2" sx={{ color: '#64748b' }}>

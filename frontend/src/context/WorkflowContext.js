@@ -184,6 +184,14 @@ export function WorkflowProvider({ children }) {
 
   // Initialize socket connection
   useEffect(() => {
+    // Clear any old localStorage data on first load
+    try {
+      localStorage.removeItem('bugbash_workflow_state');
+      localStorage.removeItem('bugbash_workflow_session');
+    } catch (error) {
+      console.warn('Could not clear localStorage:', error);
+    }
+    
     const socket = io('http://localhost:5000', {
       transports: ['websocket', 'polling']
     });
@@ -191,12 +199,16 @@ export function WorkflowProvider({ children }) {
     socket.on('connect', () => {
       console.log('Connected to server');
       dispatch({ type: actionTypes.SET_CONNECTION_STATUS, payload: true });
+      
+      // Request current workflow status on connection/reconnection
+      socket.emit('get_status');
+      
       dispatch({ 
         type: actionTypes.ADD_LOG, 
         payload: { 
           level: 'info', 
           agent: 'System', 
-          message: 'Connected to Bug Bash Copilot server' 
+          message: 'Connected to Bug Bash Copilot server - syncing status...' 
         } 
       });
     });
