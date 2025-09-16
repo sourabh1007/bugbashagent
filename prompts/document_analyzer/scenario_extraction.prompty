@@ -24,7 +24,7 @@ Document Content:
 {{document_content}}
 
 Based on the document content, extract and determine:
-1. Programming language mentioned or most suitable for the project
+1. Programming language mentioned or most suitable for the project - Use standard language names like: javascript, typescript, csharp, python, java, go, rust. For JavaScript-related content (including Node.js, JS, etc.), use "javascript". For TypeScript, use "typescript". For C#/.NET, use "csharp".
 2. Product name or main technology/framework discussed
 3. Version information - Look for specific version numbers, release versions, or version identifiers in the document. If no specific version is mentioned, analyze the content to determine the most likely current version being discussed (e.g., if .NET 8 features are mentioned, use "8.0", if Python 3.11 syntax is shown, use "3.11", etc.)
 4. List of detailed scenarios with clear intentions and explanations
@@ -79,6 +79,15 @@ EXAMPLE SCENARIO STRUCTURE:
     "priority": "high",
     "expectedOutcome": "User receives authentication token, session is established, user is redirected to dashboard with appropriate permissions"
 }
+
+IMPORTANT: For the language field, use these EXACT standardized names:
+- For JavaScript/Node.js/JS content: "javascript" 
+- For TypeScript/TS content: "typescript"
+- For C#/.NET content: "csharp" 
+- For Python content: "python"
+- For Java content: "java"
+- For Go/Golang content: "go"
+- For Rust content: "rust"
 
 IMPORTANT: For the version field, be specific:
 - If specific version numbers are mentioned (e.g., "Python 3.11", ".NET 8.0", "Node.js 18.x"), use those exact versions

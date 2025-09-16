@@ -192,6 +192,83 @@ class CodeGenerator(BaseAgent):
         self.prompt_template = None
         self.chain = None
     
+    def _get_file_extension_for_language(self, language: str) -> str:
+        """
+        Get the appropriate file extension for a given language using language configuration
+        
+        Args:
+            language: Programming language name (e.g., 'csharp', 'python', 'javascript')
+            
+        Returns:
+            File extension including the dot (e.g., '.cs', '.py', '.js')
+        """
+        # Normalize language name first (in case document analyzer passed it)
+        language = language.lower().strip()
+        
+        # Get language configuration
+        config = self.config_manager.get_config(language)
+        if config and config.file_extensions:
+            # Return the first extension (primary extension)
+            return config.file_extensions[0]
+        
+        # Fallback to hardcoded mapping for backward compatibility
+        extension_mapping = {
+            'csharp': '.cs', 'c#': '.cs', 'python': '.py', 
+            'javascript': '.js', 'node.js': '.js', 'js': '.js',
+            'typescript': '.ts', 'ts': '.ts',
+            'java': '.java', 'go': '.go', 'rust': '.rs',
+            'php': '.php', 'ruby': '.rb', 'swift': '.swift'
+        }
+        
+        extension = extension_mapping.get(language, '.txt')
+        
+        if extension == '.txt':
+            self.log(f"⚠️ Unknown language '{language}', using .txt extension")
+        
+        return extension
+    
+    def _get_build_commands_for_language(self, language: str) -> List[str]:
+        """
+        Get build commands for a given language using language configuration
+        """
+        config = self.config_manager.get_config(language)
+        if config and config.build_commands:
+            return config.build_commands
+        
+        # Fallback commands
+        fallback_commands = {
+            'csharp': ['dotnet restore', 'dotnet build'],
+            'python': ['pip install -r requirements.txt'],
+            'javascript': ['npm install', 'npm run build'],
+            'typescript': ['npm install', 'npm run build'],
+            'java': ['mvn compile'],
+            'go': ['go mod tidy', 'go build'],
+            'rust': ['cargo build']
+        }
+        
+        return fallback_commands.get(language.lower(), ['echo "No build commands configured"'])
+    
+    def _get_test_commands_for_language(self, language: str) -> List[str]:
+        """
+        Get test commands for a given language using language configuration
+        """
+        config = self.config_manager.get_config(language)
+        if config and config.test_commands:
+            return config.test_commands
+        
+        # Fallback commands
+        fallback_commands = {
+            'csharp': ['dotnet test'],
+            'python': ['pytest -v'],
+            'javascript': ['npm test'],
+            'typescript': ['npm test'],
+            'java': ['mvn test'],
+            'go': ['go test ./...'],
+            'rust': ['cargo test']
+        }
+        
+        return fallback_commands.get(language.lower(), ['echo "No test commands configured"'])
+    
     def _format_scenarios_for_prompt(self, scenarios: list) -> str:
         """Format scenarios for the LLM prompt, handling both simple strings and detailed objects"""
         if not scenarios:
@@ -898,13 +975,8 @@ class CodeGenerator(BaseAgent):
         """Extract and save only test files for each scenario in the same project directory"""
         import re
         
-        extension_mapping = {
-            'csharp': '.cs', 'c#': '.cs', 'python': '.py', 
-            'javascript': '.js', 'node.js': '.js', 'js': '.js',
-            'java': '.java', 'go': '.go', 'rust': '.rs'
-        }
-        
-        default_extension = extension_mapping.get(language.lower(), '.txt')
+        # Get file extension from language configuration
+        default_extension = self._get_file_extension_for_language(language)
         created_files = []
         
         try:
@@ -1488,13 +1560,8 @@ class {class_name}Test {{
         try:
             import re
             
-            extension_mapping = {
-                'csharp': '.cs', 'c#': '.cs', 'python': '.py', 
-                'javascript': '.js', 'node.js': '.js', 'js': '.js',
-                'java': '.java', 'go': '.go', 'rust': '.rs'
-            }
-            
-            default_extension = extension_mapping.get(language.lower(), '.txt')
+            # Get file extension from language configuration
+            default_extension = self._get_file_extension_for_language(language)
             
             # Collect all code blocks from successful scenarios
             all_main_code = []
