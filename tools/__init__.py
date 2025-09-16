@@ -1,5 +1,5 @@
 """
-Tools package for BugBashAgent
+Tools package for Bug Bash Copilot
 
 This package contains various tools used by the agents to perform their tasks.
 """

@@ -102,7 +102,7 @@ class BaseAgent(ABC):
         # Log progress update
         self.log(f"📊 Progress: {progress:.1f}% - {message}")
         
-        # Notify progress callback
+        # Notify progress callback (this will emit separate progress events)
         if self.progress_callback:
             try:
                 self.progress_callback(
@@ -112,6 +112,18 @@ class BaseAgent(ABC):
                 )
             except Exception as e:
                 self.log(f"❌ Error in progress callback: {str(e)}")
+        
+        # Also notify status callback for backward compatibility
+        if self.status_callback:
+            try:
+                self.status_callback(
+                    agent_name=self.name,
+                    status=self.current_status,
+                    message=message,
+                    progress=progress
+                )
+            except Exception as e:
+                self.log(f"❌ Error in status callback: {str(e)}")
     
     def log(self, message: str):
         """Log agent activity"""

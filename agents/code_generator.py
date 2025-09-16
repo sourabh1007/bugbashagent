@@ -267,8 +267,13 @@ class CodeGenerator(BaseAgent):
         """Generate code one scenario at a time with compilation feedback loop"""
         self.log(f"Starting scenario-by-scenario code generation with compilation feedback")
         
+        # Initial progress update
+        self.update_progress(15.0, "Initializing code generation process")
+        
         try:
             # Parse the input from DocumentAnalyzer
+            self.update_progress(20.0, "Parsing input data from document analyzer")
+            
             if isinstance(input_data, dict):
                 # Check if this is a full agent result (from workflow) or direct analysis data
                 if "agent" in input_data and "output" in input_data and "status" in input_data:
@@ -301,6 +306,8 @@ class CodeGenerator(BaseAgent):
                 raise ValueError("Input data must be either a dictionary or JSON string")
             
             # Extract information from analysis
+            self.update_progress(25.0, "Extracting scenario information")
+            
             language = analysis_data.get("language", "python").lower()
             product_name = analysis_data.get("productName", "Unknown")
             version = analysis_data.get("version", "latest")
@@ -319,6 +326,8 @@ class CodeGenerator(BaseAgent):
                 }
             
             # Log the input analysis data
+            self.update_progress(30.0, f"Validated {language} language support, processing {len(scenarios)} scenarios")
+            
             self.log(f"📊 Input Analysis Summary:")
             self.log(f"  - Language: {language}")
             self.log(f"  - Product Name: {product_name}")
@@ -327,12 +336,16 @@ class CodeGenerator(BaseAgent):
             self._log_scenario_summary(scenarios)
             
             # Initialize project structure first
+            self.update_progress(35.0, "Creating project structure")
+            
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             project_name = product_name.replace(" ", "_").lower()
             project_dir = os.path.join("workflow_outputs", f"{project_name}_{timestamp}")
             os.makedirs(project_dir, exist_ok=True)
             
             # Execute the compilation feedback loop
+            self.update_progress(40.0, "Starting compilation feedback loop")
+            
             final_result = self._execute_with_compilation_feedback(
                 scenarios, language, product_name, version, setup_info, project_dir, analysis_data
             )
@@ -363,15 +376,26 @@ class CodeGenerator(BaseAgent):
         for attempt in range(1, MAX_COMPILATION_ATTEMPTS + 1):
             self.log(f"🔄 Compilation attempt {attempt}/{MAX_COMPILATION_ATTEMPTS}")
             
+            # Update progress based on attempt
+            base_progress = 40.0 + (attempt - 1) * 20.0  # 40%, 60%, 80% for attempts 1, 2, 3
+            self.update_progress(base_progress, f"Compilation attempt {attempt}/{MAX_COMPILATION_ATTEMPTS}")
+            
             if attempt == 1:
                 # FIRST ATTEMPT: Generate all code based on document analyzer scenarios
                 self.log(f"🚀 First attempt: Generating all scenarios from document analysis ({len(scenarios)} scenarios)")
+                
+                self.update_progress(base_progress + 5.0, f"Generating {len(scenarios)} scenarios from analysis")
+                
                 scenario_results = self._generate_scenarios_individually(
                     scenarios, language, product_name, version, setup_info, project_dir, analysis_data, attempt=1
                 )
                 
+                self.update_progress(base_progress + 10.0, "Consolidating generated code")
+                
                 # Consolidate all generated code
                 consolidated_content = self._consolidate_scenario_code(scenario_results, language, product_name)
+                
+                self.update_progress(base_progress + 15.0, "Creating project structure")
                 
                 # Create final project structure with consolidated code
                 project_files = self._create_consolidated_project(
@@ -391,6 +415,8 @@ class CodeGenerator(BaseAgent):
                 # SUBSEQUENT ATTEMPTS: Only fix scenarios with compilation errors
                 self.log(f"🔧 Attempt {attempt}: Fixing ONLY scenarios with compilation errors (selective retry)")
                 
+                self.update_progress(base_progress + 5.0, "Identifying scenarios with compilation errors")
+                
                 # Identify which specific scenarios have compilation errors
                 scenarios_with_errors = self._identify_scenarios_with_compilation_errors(
                     compilation_result, scenarios, project_dir, language
@@ -399,11 +425,15 @@ class CodeGenerator(BaseAgent):
                 if scenarios_with_errors:
                     self.log(f"📋 Found {len(scenarios_with_errors)} scenarios with compilation errors to fix")
                     
+                    self.update_progress(base_progress + 8.0, f"Regenerating {len(scenarios_with_errors)} failed scenarios")
+                    
                     # Only regenerate the problematic scenarios, keep others unchanged
                     updated_scenario_results = self._regenerate_only_failed_scenarios(
                         scenarios_with_errors, scenario_results, language, 
                         product_name, version, setup_info, project_dir, analysis_data, compilation_result, attempt
                     )
+                    
+                    self.update_progress(base_progress + 12.0, "Updating project files with fixes")
                     
                     # Update only the files for scenarios that were regenerated
                     project_files = self._update_project_files_for_fixed_scenarios(
@@ -416,12 +446,16 @@ class CodeGenerator(BaseAgent):
                     
                 else:
                     self.log("⚠️ No specific scenarios identified with errors - performing minimal global fixes")
+                    self.update_progress(base_progress + 10.0, "Applying global compilation fixes")
+                    
                     # Apply global fixes without regenerating any scenarios
                     project_files = self._apply_global_compilation_fixes(
                         project_files, compilation_result, language, project_dir
                     )
             
             # CRITICAL: Always re-compile after any changes to verify fixes
+            self.update_progress(base_progress + 17.0, f"Compiling code (attempt {attempt})")
+            
             self.log(f"🔨 [Attempt {attempt}] Running compilation to verify changes...")
             fresh_compilation_result = self._compile_generated_project(project_dir, language)
             project_files["compilation_result"] = fresh_compilation_result
@@ -587,6 +621,10 @@ class CodeGenerator(BaseAgent):
         # Process each scenario individually
         for i, scenario in enumerate(scenarios, 1):
             try:
+                # Calculate progress within scenario generation (40-60% of total progress)
+                scenario_progress = 40.0 + (i / len(scenarios)) * 20.0
+                self.update_progress(scenario_progress, f"Processing scenario {i}/{len(scenarios)}: {self._get_scenario_name(scenario)}")
+                
                 self.log(f"📝 [Attempt {attempt}] {'🆕 Generating' if attempt == 1 else '🔧 Fixing'} scenario {i}/{len(scenarios)}: {self._get_scenario_name(scenario)}")
                 
                 # Format single scenario for prompt
@@ -1929,7 +1967,7 @@ class {class_name}Test {{
             report_parts.append("")
             report_parts.append("---")
             report_parts.append("")
-            report_parts.append(f"**Report generated by BugBashAgent Code Generator on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}**")
+            report_parts.append(f"**Report generated by Bug Bash Copilot Code Generator on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}**")
             
             # Write the report
             report_content = "\n".join(report_parts)

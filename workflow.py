@@ -40,6 +40,7 @@ class AgentWorkflow:
         # Set the callback for all agents
         for agent in self.agents:
             agent.set_status_callback(callback)
+            agent.set_progress_callback(callback)  # Use same callback for progress
     
     def _notify_workflow_status(self, status: str, message: str = "", current_agent: str = None, step: int = None):
         """Notify workflow status change"""

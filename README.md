@@ -1,58 +1,60 @@
-# 🤖 Bug Bash Agent - AI-Powered Multi-Agent Code Generation System
+# 🤖 Bug Bash Copilot - AI-Powered Code Quality Assessment
 
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
+[![React](https://img.shields.io/badge/React-18+-61DAFB.svg)](https://reactjs.org)
 [![LangChain](https://img.shields.io/badge/LangChain-Latest-green.svg)](https://langchain.com)
-[![Azure OpenAI](https://img.shields.io/badge/Azure%20OpenAI-GPT--4-orange.svg)](https://azure.microsoft.com/services/cognitive-services/openai-service/)
-[![Streamlit](https://img.shields.io/badge/Streamlit-UI-red.svg)](https://streamlit.io)
+[![Azure OpenAI](https://img.shields.io/badge/Azure%20OpenAI-Enabled-orange.svg)](https://azure.microsoft.com/services/cognitive-services/openai-service/)
 
 > **Built with Vibe Coding** - An intuitive, AI-first development approach that transforms requirements into production-ready code through intelligent multi-agent orchestration.
 
-## 🚀 About the Project
+## � Overview
 
-Bug Bash Agent is a **cutting-edge multi-agent AI system** engineered for full-stack software development lifecycle automation. Born from vibe coding principles, it seamlessly transforms natural language specifications into production-ready applications across **7 programming languages** with intelligent compilation feedback loops and comprehensive testing automation.
+Bug Bash Copilot is an intelligent **AI-powered assistant** for automated software quality assessment and bug detection. It analyzes requirements, generates test scenarios, and performs comprehensive code quality evaluation before production deployment.
 
-### ⚡ Core Features
+### 🎯 Key Features
 
 - **🔄 3-Agent Pipeline Architecture**: Document Analyzer → Code Generator → Test Runner
 - **🌍 Multi-Language Code Generation**: TypeScript, JavaScript, Python, C#, Java, Go, Rust
+- **🎨 Modern Web Dashboard**: React.js interface with real-time progress tracking
 - **🔧 Intelligent Compilation Loop**: Real-time error detection, categorization, and selective regeneration
+- **🐛 Bug Analysis**: Detailed issue categorization with severity levels and mitigation suggestions
+- **� Quality Metrics**: Production readiness assessment with actionable insights
+- **⚡ Real-time Updates**: WebSocket integration for live progress monitoring
 - **🧪 Automated Test Discovery & Execution**: Framework-agnostic testing with LLM-powered failure analysis
-- **📊 Dual Reporting System**: Technical reports + UI-optimized summaries with quality scoring
-- **🎨 Smart Project Scaffolding**: Language-aware project generation with best practices
-- **🔍 Advanced Monitoring**: LangSmith integration for workflow tracing and performance analytics
-- **⚡ Streamlit Web Interface**: Professional UI for interactive workflow management
+- **� Advanced Monitoring**: LangSmith integration for workflow tracing and performance analytics
 - **♻️ Resilient Architecture**: Graceful degradation, error recovery, and non-blocking failures
-
 ## 🏗️ System Architecture
 
+### Frontend (React.js)
 ```
-┌─────────────────┐    ┌──────────────────────────────────────────────────────┐
-│   USER INPUT    │    │                 MULTI-AGENT PIPELINE                 │
-│                 │    │                                                      │
-│ • Requirements  │    │  ┌─────────────┐   ┌─────────────┐   ┌─────────────┐ │
-│ • Documents     │────┼─►│ 📄 Document │──►│ 🔨 Code     │──►│ 🧪 Test     │ │
-│ • Specifications│    │  │   Analyzer  │   │  Generator  │   │   Runner    │ │
-└─────────────────┘    │  │             │   │             │   │             │ │
-                       │  │ • Language  │   │ • Multi-    │   │ • Discovery │ │
-┌─────────────────┐    │  │   Detection │   │   Language  │   │ • Execution │ │
-│    STREAMLIT    │    │  │ • Scenario  │   │   Support   │   │ • Analysis  │ │
-│       UI        │◄───┼──│   Extract   │   │ • Compile   │   │ • Reporting │ │
-│                 │    │  │ • Setup     │   │   Feedback  │   │ • Quality   │ │
-│ • Live Monitor  │    │  │   Analysis  │   │ • Auto-Fix  │   │   Scoring   │ │
-│ • Config Panel  │    │  └─────────────┘   └─────────────┘   └─────────────┘ │
-│ • Results View  │    │                                                      │
-└─────────────────┘    └──────────────────────────────────────────────────────┘
-                                                │
-                       ┌─────────────────────────▼──────────────────────────────┐
-                       │                  OUTPUT ARTIFACTS                      │
-                       │                                                        │
-                       │ • Complete Project Structure  • Test Reports          │
-                       │ • Source Code & Build Files   • Quality Analytics     │
-                       │ • Documentation & README      • Execution Logs        │
-                       └────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────┐
+│                React Frontend                    │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ │
+│  │   Input     │ │   Progress  │ │   Results   │ │
+│  │  Section    │ │   Monitor   │ │  Dashboard  │ │
+│  └─────────────┘ └─────────────┘ └─────────────┘ │
+│         │               │               │        │
+│         └───────────────┼───────────────┘        │
+│                    WebSocket                     │
+└─────────────────────┼───────────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────────┐
+│              Backend (Flask + SocketIO)          │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ │
+│  │  Document   │ │    Code     │ │    Test     │ │
+│  │  Analyzer   │ │  Generator  │ │   Runner    │ │
+│  └─────────────┘ └─────────────┘ └─────────────┘ │
+│         │               │               │        │
+│         ▼               ▼               ▼        │
+│   Requirements    Generated Code   Quality Report │
+│     Analysis        & Test Cases    & Bug Findings│
+└─────────────────────────────────────────────────┘
 ```
 
-### 🔧 Agent Responsibilities
+### Multi-Agent Pipeline
+1. **Document Analyzer**: Parses requirements and extracts test scenarios
+2. **Code Generator**: Creates code implementations with compilation validation
+3. **Test Runner**: Executes tests and generates comprehensive bug analysis reports
 
 | Agent | Primary Function | Key Outputs | Technologies |
 |-------|------------------|-------------|--------------|
@@ -60,12 +62,22 @@ Bug Bash Agent is a **cutting-edge multi-agent AI system** engineered for full-s
 | **🔨 Code Generator** | Multi-language code generation, compilation validation, project scaffolding | Source code, build configurations, compilation reports | Language compilers, project generators, error analysis |
 | **🧪 Test Runner** | Test discovery, execution, failure analysis, quality reporting | Test results, coverage reports, quality scores (0-100) | Framework dispatchers, LLM analysis, dual reporting |
 
+### Supported Languages
+
+- **TypeScript** - Full type safety with Node.js/Express patterns
+- **JavaScript** - Modern ES6+ with async/await support
+- **Python** - Type hints with FastAPI/Flask frameworks
+- **C#** - .NET 6+ with Entity Framework integration
+- **Java** - Spring Boot with JPA/Hibernate support
+- **Go** - Idiomatic Go with goroutines and channels
+- **Rust** - Systems programming with Tokio async support
+
 ## 📁 Project Structure & Responsibilities
 
 ```
-bugbashagent/
+bugbash-copilot/
 ├── 🎯 main.py                      # CLI entry point for interactive workflows
-├── 🌐 streamlit_app.py            # Professional web UI with real-time monitoring
+├── 🌐 backend_server.py            # Flask + SocketIO backend server with WebSocket support
 ├── ⚙️ workflow.py                 # Multi-agent orchestration engine
 ├── 
 ├── 🤖 agents/                     # Core AI agents with specialized roles
@@ -73,6 +85,23 @@ bugbashagent/
 │   ├── document_analyzer.py       # Requirements analysis & language detection
 │   ├── code_generator.py          # Multi-language code generation & compilation
 │   └── test_runner.py             # Test execution & intelligent failure analysis
+├── 
+├── 🎨 frontend/                   # React.js web interface
+│   ├── public/                    # Static assets
+│   ├── src/                       # React source code
+│   │   ├── components/            # React components
+│   │   │   ├── Header.js
+│   │   │   ├── InputSection.js
+│   │   │   ├── WorkflowProgress.js
+│   │   │   ├── AgentPipeline.js
+│   │   │   ├── RealTimeLogs.js
+│   │   │   └── TestRunnerResults.js
+│   │   ├── context/               # React context for state management
+│   │   │   └── WorkflowContext.js
+│   │   ├── App.js                 # Main React app
+│   │   └── index.js               # React entry point
+│   ├── package.json               # Frontend dependencies
+│   └── package-lock.json
 ├── 
 ├── 🔌 integrations/               # External service integrations
 │   ├── azure_openai/              # Azure OpenAI client with retry logic
@@ -128,14 +157,67 @@ bugbashagent/
         └── generated_code/            # Complete project structure
 ```
 
-## 🚀 How to Run
+## 🚀 Installation & Setup
 
-### 🖥️ CLI Mode (Interactive Terminal)
+### Prerequisites
+
+- **Python 3.8+**
+- **Node.js 16+**
+- **Azure OpenAI API key**
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/sourabh1007/bugbash-copilot.git
+   cd bugbash-copilot
+   ```
+
+2. **Configure environment**
+   ```bash
+   cp .env.template .env
+   # Edit .env with your Azure OpenAI credentials
+   ```
+
+3. **Run setup script**
+   ```bash
+   # Windows
+   .\setup_frontend.bat
+   
+   # Linux/Mac
+   ./setup_frontend.sh
+   ```
+
+4. **Start the application**
+   ```bash
+   # Terminal 1: Start backend
+   python backend_server.py
+   
+   # Terminal 2: Start frontend
+   cd frontend && npm start
+   ```
+
+5. **Open your browser**
+   Navigate to `http://localhost:3000`
+
+## 🎯 Usage
+
+### Web Interface
+
+1. **Input Requirements**: Paste text, upload documents, or provide URLs
+2. **Monitor Progress**: Watch real-time agent execution
+3. **Review Results**: Interactive bug bash dashboard with:
+   - Quality metrics and production readiness scores
+   - Detailed bug findings with severity levels
+   - Mitigation suggestions and fix recommendations
+
+### CLI Mode
 
 ```bash
+<<<<<<< HEAD
 # Clone repository
-git clone https://github.com/sourabh1007/bugbashagent.git
-cd bugbashagent
+git clone https://github.com/sourabh1007/bugbash-copilot.git
+cd bugbash-copilot
 
 # Install dependencies
 pip install -r requirements.txt
@@ -145,105 +227,7 @@ cp .env.template .env
 # Edit .env with your Azure OpenAI credentials
 
 # Run interactive CLI
-python main.py
-```
-
-**CLI Workflow:**
-```bash
-🤖 LangChain Multi-Agent Code Development Workflow
-==================================================
-
-Choose input method:
-1. 📝 Enter text directly
-2. 📄 Provide local file path  
-3. 🌐 Provide URL (if supported)
-
-Enter your choice (1/2/3): 1
-
-📝 Enter your requirements:
-> Create a TypeScript REST API for user management with authentication
-
-🔄 Processing with 3-agent workflow...
-✅ Document analysis complete (15.2s)
-✅ Code generation with compilation complete (42.7s)  
-✅ Test execution and analysis complete (8.9s)
-
-📁 Output: workflow_outputs/user_management_api_20250911_143022/
-```
-
-### 🌐 Streamlit Web UI (Professional Interface)
-
-```bash
-# Start Streamlit application
-streamlit run streamlit_app.py
-
-# Or with specific port
-streamlit run streamlit_app.py --server.port 8501
-```
-
-**Streamlit Features:**
-- **🎨 Professional UI**: Modern design with real-time progress tracking
-- **📊 Live Monitoring**: Agent status cards with progress bars and timing
-- **⚙️ Configuration Panel**: Environment variables and agent settings management
-- **📁 File Upload**: Drag-and-drop document processing (PDF, DOCX, TXT)
-- **📈 Analytics Dashboard**: Workflow metrics, success rates, and performance insights
-- **🔍 Results Explorer**: Interactive browsing of generated code and test reports
-- **⏰ Auto-refresh**: Real-time updates during workflow execution
-
-### 🔧 Advanced Configuration Commands
-
-```bash
-# Environment setup with custom configuration
-export AZURE_OPENAI_API_KEY="your_api_key"
-export AZURE_OPENAI_ENDPOINT="https://your-resource.openai.azure.com/"
-export LANGCHAIN_TRACING_V2="true"  # Enable LangSmith tracing
-
-# Development mode with verbose logging
-export LANGCHAIN_VERBOSE="true"
-python main.py
-
-# Custom temperature and model settings
-export TEMPERATURE="0.3"
-export MODEL_NAME="gpt-4"
-python main.py
-
-# Validate language support and configurations
-python -c "
-from patterns.language_config import LanguageConfigManager
-manager = LanguageConfigManager()
-print('Supported Languages:', manager.get_supported_languages())
-print('TypeScript Config:', manager.get_language_config('typescript'))
-"
-
-# Check compilation tools availability
-python -c "
-from tools.compilation.compiler_registry import CompilerRegistry
-registry = CompilerRegistry()
-print('Available Compilers:', registry.get_available_compilers())
-"
-
-# Streamlit with custom configuration
-streamlit run streamlit_app.py --server.port 8080 --server.address 0.0.0.0
-
-# Production deployment with gunicorn (for Streamlit)
-pip install gunicorn
-gunicorn -w 4 -k uvicorn.workers.UvicornWorker streamlit_app:app
-```
-
-### 🐳 Docker Deployment (Optional)
-
-```bash
-# Build Docker image
-docker build -t bugbash-agent .
-
-# Run with environment variables
-docker run -e AZURE_OPENAI_API_KEY="your_key" \
-           -e AZURE_OPENAI_ENDPOINT="your_endpoint" \
-           -p 8501:8501 \
-           bugbash-agent
-
-# Or with environment file
-docker run --env-file .env -p 8501:8501 bugbash-agent
+python main.py --input "your requirements here"
 ```
 
 ## 🌍 Supported Languages
@@ -258,34 +242,74 @@ docker run --env-file .env -p 8501:8501 bugbash-agent
 | **Go** | 1.19+ | go mod | go test | Goroutines, interfaces, idiomatic Go | ✅ Production |
 | **Rust** | 1.70+ | Cargo | cargo test | Ownership, async, zero-cost abstractions | ✅ Production |
 
-## 📊 Example Output Structure
+## ⚙️ Configuration
 
+### Environment Variables
+
+Create a `.env` file with your Azure OpenAI configuration:
+
+```bash
+# Required
+AZURE_OPENAI_API_KEY=your_api_key_here
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+AZURE_OPENAI_DEPLOYMENT_NAME=your_deployment_name
+AZURE_OPENAI_API_VERSION=2024-02-15-preview
+
+# Optional: LangSmith tracing
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_API_KEY=your_langsmith_key
+LANGCHAIN_PROJECT=BugBashCopilot
 ```
-workflow_outputs/ecommerce_api_20250911_143022/
-├── 00_workflow_summary.txt           # Executive summary
-├── step_01_document_analyzer.txt     # Requirements analysis
-├── step_02_code_generator.txt        # Code generation log
-├── step_03_test_runner.txt           # Test execution results
-├── test_report.md                    # Technical test report
-├── test_report_ui.md                 # UI-friendly summary
-├── test_results.json                 # Machine-readable results
-└── generated_code/                   # Complete project
-    ├── src/
-    │   ├── controllers/               # API controllers
-    │   ├── models/                    # Data models
-    │   ├── services/                  # Business logic
-    │   └── utils/                     # Utility functions
-    ├── tests/
-    │   ├── unit/                      # Unit tests
-    │   ├── integration/               # Integration tests
-    │   └── e2e/                       # End-to-end tests
-    ├── package.json                   # Dependencies
-    ├── tsconfig.json                  # TypeScript config
-    ├── jest.config.js                 # Test configuration
-    ├── .gitignore                     # Git ignore rules
-    ├── README.md                      # Project documentation
-    └── docker-compose.yml             # Container orchestration
-```
+
+## 🐛 Bug Bash Dashboard Features
+
+The React frontend provides a comprehensive bug bash quality assessment interface:
+
+### Quality Metrics
+
+- **Total Scenarios**: Number of test scenarios executed
+- **Scenarios Passed**: Features working correctly  
+- **Issues Found**: Bugs discovered during analysis
+- **Quality Score**: Overall production readiness percentage
+
+### Bug Analysis
+
+- **Severity Classification**: Critical, High, Medium priority levels
+- **Category Grouping**: Security, Configuration, Connectivity, Functional
+- **Mitigation Suggestions**: Actionable fix recommendations
+- **Production Readiness**: Deployment recommendations
+
+### Real-time Monitoring
+
+- **Agent Progress**: Live status of each pipeline stage
+- **Execution Logs**: Detailed operation logging
+- **WebSocket Updates**: Instant status synchronization
+
+### Interactive Components
+
+- **Input Section**: Multi-format input (text, file upload, URL)
+- **Workflow Progress**: Visual pipeline status with real-time updates
+- **Agent Pipeline**: Step-by-step agent execution tracking
+- **Real-time Logs**: Live scrolling execution logs with timestamps
+- **Test Results Dashboard**: Interactive charts and detailed bug analysis
+  - Pie charts for test results distribution
+  - Bar charts for severity analysis
+  - Detailed bug findings with categorization
+  - Mitigation suggestions with priority levels
+
+## 🔧 Development
+
+### Adding New Languages
+
+1. Create configuration in `patterns/languages/`
+2. Add language-specific prompts in `prompts/`
+3. Update strategy mappings in `strategies/`
+
+### Extending Agents
+
+1. Implement new agent in `agents/`
+2. Add integration to `workflow.py`
+3. Update UI components in `frontend/src/`
 
 ## 🔍 Advanced Features
 
@@ -300,17 +324,25 @@ workflow_outputs/ecommerce_api_20250911_143022/
 
 ## 🤝 Contributing
 
-1. **Fork & Clone**: `git clone https://github.com/yourusername/bugbashagent.git`
-2. **Create Branch**: `git checkout -b feature/new-language-support`
-3. **Develop & Test**: Add your changes with comprehensive testing
-4. **Submit PR**: Detailed description with examples and validation results
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) for full details.
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🙏 Acknowledgments
+
+- **LangChain** for the AI agent framework
+- **Azure OpenAI** for language model capabilities
+- **React & Material-UI** for the modern web interface
+- **Flask & SocketIO** for real-time backend services
 
 ---
 
-**🚀 Engineered with Vibe Coding principles using LangChain, Azure OpenAI GPT-4, and Streamlit**
+🚀 **Engineered with Vibe Coding principles using LangChain, Azure OpenAI GPT-4, and React**
 
 *Transform natural language requirements into production-ready applications across 7 programming languages with intelligent multi-agent orchestration.*
