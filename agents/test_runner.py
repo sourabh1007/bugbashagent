@@ -216,15 +216,12 @@ class TestRunner(BaseAgent):
                     self.log(f"⚠️ Error detecting language from files: {e}, defaulting to python")
                     validation_issues.append(f"Language detection error: {e}")
             
-            self.log(f"📋 Test execution details:")
-            self.log(f"  - Language: {language.upper()}")
-            self.log(f"  - Product: {product_name}")
-            self.log(f"  - Code Path: {code_path}")
-            self.log(f"  - Scenarios: {len(scenario_results.get('successful', []))} successful, {len(scenario_results.get('failed', []))} failed")
+            # Simple logging for test execution setup
+            self.log(f"🎯 Running {language.upper()} tests for {product_name}")
+            self.log(f"📁 Code Path: {os.path.basename(code_path) if code_path else 'Unknown'}")
+            
             if validation_issues:
-                self.log(f"  - Validation Issues: {len(validation_issues)} issues detected")
-                for issue in validation_issues:
-                    self.log(f"    ⚠️ {issue}")
+                self.log(f"⚠️ {len(validation_issues)} validation issue(s) detected (continuing with execution)")
             
             # Step 1: Discover and analyze test structure (with robust error handling)
             self.update_progress(40.0, "Discovering test files and structure")
@@ -595,6 +592,9 @@ class TestRunner(BaseAgent):
             self.log(f"📊 Test execution completed in {execution_time:.2f}s")
             self.log(f"  ✅ Passed: {passed_tests}/{total_tests} ({success_rate:.1f}%)")
             
+            # Print clean test summary
+            self._print_clean_test_summary(test_results)
+            
             return test_results
             
         except Exception as e:
@@ -614,6 +614,72 @@ class TestRunner(BaseAgent):
             
             self.log(f"❌ Test execution failed: {str(e)}")
             return error_result
+    
+    def _print_clean_test_summary(self, test_results: Dict[str, Any]) -> None:
+        """Print a clean, readable summary of test results"""
+        print("\n" + "=" * 80)
+        print("🧪 TEST EXECUTION SUMMARY")
+        print("=" * 80)
+        
+        total_tests = test_results.get("total_tests", 0)
+        passed_tests = test_results.get("passed_tests", 0)
+        failed_tests = test_results.get("failed_tests", 0)
+        skipped_tests = test_results.get("skipped_tests", 0)
+        execution_time = test_results.get("execution_time", 0)
+        success_rate = test_results.get("success_rate", 0)
+        
+        # Overall status
+        if failed_tests == 0 and total_tests > 0:
+            status_icon = "✅"
+            status_text = "ALL TESTS PASSED"
+        elif failed_tests > 0:
+            status_icon = "❌"
+            status_text = "SOME TESTS FAILED"
+        else:
+            status_icon = "⚠️"
+            status_text = "NO TESTS FOUND"
+        
+        print(f"{status_icon} {status_text}")
+        print(f"📊 Results: {passed_tests} passed, {failed_tests} failed, {skipped_tests} skipped (Total: {total_tests})")
+        print(f"⏱️ Execution Time: {execution_time:.2f}s")
+        print(f"📈 Success Rate: {success_rate:.1f}%")
+        
+        # Show failed tests with error details
+        detailed_results = test_results.get("detailed_results", [])
+        failed_test_details = [test for test in detailed_results if test.get("status") == "failed"]
+        
+        if failed_test_details:
+            print("\n❌ FAILED TESTS:")
+            print("-" * 50)
+            for i, test in enumerate(failed_test_details[:10], 1):  # Show max 10 failed tests
+                test_name = test.get("name", "Unknown Test")
+                error_msg = test.get("error", "No error details available")
+                
+                # Clean up test name for display
+                if len(test_name) > 60:
+                    test_name = test_name[:57] + "..."
+                
+                print(f"\n{i}. {test_name}")
+                
+                # Show first line of error (most important)
+                if error_msg and error_msg.strip():
+                    error_lines = error_msg.split('\n')
+                    for line in error_lines[:3]:  # Show first 3 lines of error
+                        if line.strip():
+                            print(f"   💥 {line.strip()}")
+                            break
+                else:
+                    print(f"   💥 No specific error message available")
+            
+            if len(failed_test_details) > 10:
+                print(f"\n   ... and {len(failed_test_details) - 10} more failed tests")
+        
+        # Show passed tests summary
+        if passed_tests > 0:
+            print(f"\n✅ PASSED TESTS: {passed_tests} test(s) passed successfully")
+        
+        print("\n" + "=" * 80)
+        print("")
     
     # Language-specific test execution methods
     
@@ -1041,15 +1107,31 @@ class TestRunner(BaseAgent):
         details = []
         import re
         
-        # Extract failed test details
-        failed_pattern = r'Failed\s+(.+?)\s*\[(\d+)\s*ms\]'
+        # Extract failed test details - Updated regex to match actual format
+        # Format: "  Failed <TestName> [<duration> ms]"
+        failed_pattern = r'\s*Failed\s+(.+?)\s*\[(\d+)\s*ms\]'
         for match in re.finditer(failed_pattern, output):
+            test_name = match.group(1).strip()
             details.append({
-                "name": match.group(1).strip(),
+                "name": test_name,
                 "status": "failed",
                 "duration": f"{match.group(2)}ms",
-                "error": self._extract_error_from_output(output, match.group(1))
+                "error": self._extract_error_from_output(output, test_name)
             })
+        
+        # Extract passed test details from summary line
+        # Format: "Failed!  - Failed:     3, Passed:    22, Skipped:     0, Total:    25"
+        summary_match = re.search(r'Passed:\s*(\d+)', output)
+        if summary_match:
+            passed_count = int(summary_match.group(1))
+            # Add passed tests (we don't have individual names, so use generic)
+            for i in range(passed_count):
+                details.append({
+                    "name": f"Test_{i+1}",
+                    "status": "passed",
+                    "duration": "N/A",
+                    "error": None
+                })
         
         return details
 
@@ -1148,17 +1230,40 @@ class TestRunner(BaseAgent):
             error_lines = []
             capturing = False
             
-            for line in lines:
-                if test_name in line and any(keyword in line.lower() for keyword in ['fail', 'error', 'exception']):
+            for i, line in enumerate(lines):
+                # Look for the test name in failed test section
+                if test_name in line and any(keyword in line.lower() for keyword in ['fail', 'error']):
                     capturing = True
-                    continue
-                
-                if capturing:
-                    if line.strip() and not line.startswith(' '):
-                        break
-                    error_lines.append(line)
+                    # Look for "Error Message:" in the next few lines
+                    for j in range(i + 1, min(i + 10, len(lines))):
+                        if "Error Message:" in lines[j]:
+                            # Get the next line which should contain the actual error
+                            if j + 1 < len(lines):
+                                error_message = lines[j + 1].strip()
+                                # Clean up the error message
+                                if error_message:
+                                    # Extract the main exception type and message
+                                    if ':' in error_message:
+                                        parts = error_message.split(':', 2)
+                                        if len(parts) >= 2:
+                                            exception_type = parts[0].strip()
+                                            message = parts[1].strip() if len(parts) > 1 else ""
+                                            return f"{exception_type}: {message}"
+                                    return error_message
+                            break
+                    break
             
-            return '\n'.join(error_lines).strip() if error_lines else None
+            # Fallback: try to find any error message near the test name
+            if not error_lines:
+                for i, line in enumerate(lines):
+                    if test_name in line:
+                        # Look for error in next 5 lines
+                        for j in range(i + 1, min(i + 6, len(lines))):
+                            if any(keyword in lines[j].lower() for keyword in ['exception', 'error']):
+                                return lines[j].strip()
+                        break
+            
+            return None
             
         except Exception:
             return None

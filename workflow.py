@@ -260,55 +260,119 @@ class AgentWorkflow:
                     f.write(f"- Execution Time: {execution_summary.get('execution_time', 0):.2f}s\n")
                     f.write("\n")
                     
-                    # Test analysis section
-                    if isinstance(test_output, dict) and "test_analysis" in test_output:
-                        test_analysis = test_output["test_analysis"]
-                        f.write("🤖 AI ANALYSIS:\n")
-                        f.write("-" * 30 + "\n")
-                        f.write(f"{test_analysis.get('llm_analysis', 'No analysis available')}\n\n")
+                    # NEW SECTION: Individual Test Results with Error Details
+                    if isinstance(test_output, dict) and "test_results" in test_output:
+                        test_results = test_output["test_results"]
+                        detailed_results = test_results.get("detailed_results", [])
                         
-                        # Key insights
-                        insights = test_analysis.get("key_insights", [])
-                        if insights:
-                            f.write("💡 KEY INSIGHTS:\n")
-                            for insight in insights:
-                                f.write(f"- {insight}\n")
-                            f.write("\n")
-                        
-                        # Recommendations
-                        recommendations = test_analysis.get("recommendations", [])
-                        if recommendations:
-                            f.write("📋 RECOMMENDATIONS:\n")
-                            for rec in recommendations:
-                                f.write(f"- {rec}\n")
-                            f.write("\n")
-                        
-                        # Test quality score
-                        quality_score = test_analysis.get("test_quality_score", 0)
-                        f.write(f"⭐ TEST QUALITY SCORE: {quality_score}/100\n\n")
+                        if detailed_results:
+                            f.write("🔍 INDIVIDUAL TEST RESULTS:\n")
+                            f.write("=" * 40 + "\n")
+                            
+                            # Group tests by status
+                            passed_tests = [t for t in detailed_results if t.get("status") == "passed"]
+                            failed_tests = [t for t in detailed_results if t.get("status") == "failed"]
+                            skipped_tests = [t for t in detailed_results if t.get("status") == "skipped"]
+                            
+                            # Show passed tests summary
+                            if passed_tests:
+                                f.write(f"\n✅ PASSED TESTS ({len(passed_tests)}):\n")
+                                f.write("-" * 25 + "\n")
+                                for test in passed_tests[:5]:  # Show first 5
+                                    name = test.get("name", "Unknown Test")
+                                    duration = test.get("duration", "N/A")
+                                    f.write(f"  ✓ {name}")
+                                    if duration and duration != "N/A":
+                                        f.write(f" ({duration})")
+                                    f.write("\n")
+                                
+                                if len(passed_tests) > 5:
+                                    f.write(f"  ... and {len(passed_tests) - 5} more passed tests\n")
+                            
+                            # Show failed tests with detailed error information
+                            if failed_tests:
+                                f.write(f"\n❌ FAILED TESTS ({len(failed_tests)}):\n")
+                                f.write("-" * 25 + "\n")
+                                for i, test in enumerate(failed_tests, 1):
+                                    name = test.get("name", "Unknown Test")
+                                    duration = test.get("duration", "N/A")
+                                    error = test.get("error", "No error details available")
+                                    
+                                    f.write(f"\n{i}. ❌ {name}")
+                                    if duration and duration != "N/A":
+                                        f.write(f" ({duration})")
+                                    f.write("\n")
+                                    
+                                    # Write the actual error message/stack trace
+                                    if error and error.strip():
+                                        f.write("   ERROR DETAILS:\n")
+                                        f.write("   " + "-" * 15 + "\n")
+                                        # Indent error lines for better readability
+                                        error_lines = error.split('\n')
+                                        for error_line in error_lines:
+                                            if error_line.strip():
+                                                f.write(f"   {error_line}\n")
+                                        f.write("   " + "-" * 15 + "\n")
+                                    else:
+                                        f.write("   ERROR DETAILS: No specific error message captured\n")
+                            
+                            # Show skipped tests
+                            if skipped_tests:
+                                f.write(f"\n⏭️ SKIPPED TESTS ({len(skipped_tests)}):\n")
+                                f.write("-" * 25 + "\n")
+                                for test in skipped_tests:
+                                    name = test.get("name", "Unknown Test")
+                                    f.write(f"  ⏭️ {name}\n")
+                
+                # Test analysis section
+                if isinstance(test_output, dict) and "test_analysis" in test_output:
+                    test_analysis = test_output["test_analysis"]
+                    f.write("🤖 AI ANALYSIS:\n")
+                    f.write("-" * 30 + "\n")
+                    f.write(f"{test_analysis.get('llm_analysis', 'No analysis available')}\n\n")
                     
-                    # Comprehensive report link
-                    if "comprehensive_report" in test_output:
-                        f.write("📄 COMPREHENSIVE REPORT:\n")
-                        f.write(f"HTML report available in test results directory\n\n")
+                    # Key insights
+                    insights = test_analysis.get("key_insights", [])
+                    if insights:
+                        f.write("💡 KEY INSIGHTS:\n")
+                        for insight in insights:
+                            f.write(f"- {insight}\n")
+                        f.write("\n")
+                    
+                    # Recommendations
+                    recommendations = test_analysis.get("recommendations", [])
+                    if recommendations:
+                        f.write("📋 RECOMMENDATIONS:\n")
+                        for rec in recommendations:
+                            f.write(f"- {rec}\n")
+                        f.write("\n")
+                    
+                    # Test quality score
+                    quality_score = test_analysis.get("test_quality_score", 0)
+                    f.write(f"⭐ TEST QUALITY SCORE: {quality_score}/100\n\n")
                 
-                # Standard workflow sections
-                f.write("INPUT:\n")
-                f.write("-" * 40 + "\n")
-                f.write(str(input_data) + "\n\n")
-                
-                f.write("OUTPUT:\n")
-                f.write("-" * 40 + "\n")
-                
-                # Handle different output types
-                if isinstance(output_data, dict):
-                    f.write(json.dumps(output_data, indent=2, ensure_ascii=False) + "\n")
-                else:
-                    f.write(str(output_data) + "\n")
+                # Comprehensive report link
+                if "comprehensive_report" in test_output:
+                    f.write("📄 COMPREHENSIVE REPORT:\n")
+                    f.write(f"HTML report available in test results directory\n\n")
+            
+            # Standard workflow sections
+            f.write("INPUT:\n")
+            f.write("-" * 40 + "\n")
+            f.write(str(input_data) + "\n\n")
+            
+            f.write("OUTPUT:\n")
+            f.write("-" * 40 + "\n")
+            
+            # Handle different output types
+            if isinstance(output_data, dict):
+                f.write(json.dumps(output_data, indent=2, ensure_ascii=False) + "\n")
+            else:
+                f.write(str(output_data) + "\n")
             
             print(f"💾 Saved {agent_name} output to: {filename}")
             return filepath
-            
+        
         except Exception as e:
             print(f"❌ Error saving {agent_name} output: {str(e)}")
             return None
@@ -646,3 +710,174 @@ Agent Execution Results:
             summary += f"Error: {results.get('error', 'Unknown error')}\n"
         
         return summary
+
+    def format_final_execution_report(self, final_output: Dict[str, Any]) -> str:
+        """Format the final execution report in a clean, readable structure."""
+        if not isinstance(final_output, dict):
+            return str(final_output)
+        
+        report = []
+        report.append("🎯 EXECUTION SUMMARY")
+        report.append("=" * 60)
+        
+        # Agent and Input Information
+        agent_name = final_output.get('agent', 'Unknown Agent')
+        report.append(f"Agent: {agent_name}")
+        
+        # Get input details if available
+        input_data = final_output.get('input', {})
+        if isinstance(input_data, dict):
+            language = input_data.get('language', 'Unknown')
+            product_name = input_data.get('productName', 'Unknown Product')
+            report.append(f"Language: {language.upper()}")
+            report.append(f"Product: {product_name}")
+            
+            scenario_list = input_data.get('scenarioList', [])
+            if scenario_list:
+                report.append(f"Scenarios: {len(scenario_list)} scenario(s) processed")
+        
+        report.append("")
+        
+        # Output Summary
+        output_data = final_output.get('output', {})
+        if isinstance(output_data, dict):
+            # Test results summary
+            test_results = output_data.get('test_results', {})
+            if test_results:
+                report.append("📊 TEST EXECUTION RESULTS")
+                report.append("-" * 40)
+                
+                success = test_results.get('success', False)
+                status_emoji = "✅" if success else "❌"
+                report.append(f"Status: {status_emoji} {'PASSED' if success else 'FAILED'}")
+                
+                total_tests = test_results.get('total_tests', 0)
+                passed_tests = test_results.get('passed_tests', 0)
+                failed_tests = test_results.get('failed_tests', 0)
+                execution_time = test_results.get('execution_time', 0)
+                
+                report.append(f"Total Tests: {total_tests}")
+                report.append(f"Passed: {passed_tests} ✅")
+                report.append(f"Failed: {failed_tests} ❌")
+                report.append(f"Execution Time: {execution_time:.2f}s")
+                
+                # Show specific failed tests with error messages
+                if failed_tests > 0:
+                    detailed_results = test_results.get('detailed_results', [])
+                    failed_test_details = [test for test in detailed_results if test.get("status") == "failed"]
+                    
+                    if failed_test_details:
+                        report.append("")
+                        report.append("❌ FAILED TESTS:")
+                        for i, test in enumerate(failed_test_details[:5], 1):  # Show max 5 failed tests
+                            test_name = test.get("name", "Unknown Test")
+                            error_msg = test.get("error", "No error details available")
+                            
+                            # Clean up test name for display
+                            if len(test_name) > 50:
+                                test_name = test_name[:47] + "..."
+                            
+                            report.append(f"{i}. {test_name}")
+                            
+                            # Show first meaningful error line
+                            if error_msg and error_msg.strip():
+                                error_lines = error_msg.split('\n')
+                                for line in error_lines:
+                                    if line.strip() and not line.strip().startswith('at '):
+                                        clean_error = line.strip()
+                                        if len(clean_error) > 80:
+                                            clean_error = clean_error[:77] + "..."
+                                        report.append(f"   💥 {clean_error}")
+                                        break
+                            else:
+                                report.append(f"   💥 No specific error message")
+                        
+                        if len(failed_test_details) > 5:
+                            report.append(f"   ... and {len(failed_test_details) - 5} more failed tests")
+                
+                # Test analysis summary
+                test_analysis = output_data.get('test_analysis', {})
+                if test_analysis and isinstance(test_analysis, dict):
+                    key_insights = test_analysis.get('key_insights', [])
+                    if key_insights:
+                        report.append("")
+                        report.append("🔍 KEY INSIGHTS")
+                        for insight in key_insights[:3]:  # Show top 3 insights
+                            if isinstance(insight, str):
+                                report.append(f"• {insight}")
+                    
+                    recommendations = test_analysis.get('recommendations', [])
+                    if recommendations:
+                        report.append("")
+                        report.append("💡 RECOMMENDATIONS")
+                        for rec in recommendations[:3]:  # Show top 3 recommendations
+                            if isinstance(rec, str):
+                                report.append(f"• {rec}")
+            
+            # Project files summary
+            project_files = output_data.get('project_files', {})
+            if project_files:
+                report.append("")
+                report.append("📁 PROJECT FILES")
+                report.append("-" * 40)
+                
+                project_dir = project_files.get('project_dir', 'N/A')
+                report.append(f"Project Directory: {os.path.basename(project_dir) if project_dir != 'N/A' else 'N/A'}")
+                
+                compilation_result = project_files.get('compilation_result', {})
+                if compilation_result:
+                    success = compilation_result.get('success', False)
+                    status_emoji = "✅" if success else "❌"
+                    report.append(f"Compilation: {status_emoji} {'SUCCESS' if success else 'FAILED'}")
+            
+            # Scenario results summary
+            scenario_results = output_data.get('scenario_results', {})
+            if scenario_results:
+                successful = scenario_results.get('successful', [])
+                failed = scenario_results.get('failed', [])
+                
+                report.append("")
+                report.append("🎭 SCENARIO RESULTS")
+                report.append("-" * 40)
+                report.append(f"Successful Scenarios: {len(successful)} ✅")
+                report.append(f"Failed Scenarios: {len(failed)} ❌")
+                
+                if successful:
+                    report.append("")
+                    report.append("✅ SUCCESSFUL SCENARIOS:")
+                    for scenario in successful[:3]:  # Show first 3
+                        name = scenario.get('scenario_name', 'Unknown')
+                        # Truncate long names
+                        if len(name) > 60:
+                            name = name[:57] + "..."
+                        report.append(f"  • {name}")
+                    
+                    if len(successful) > 3:
+                        report.append(f"  ... and {len(successful) - 3} more")
+                
+                if failed:
+                    report.append("")
+                    report.append("❌ FAILED SCENARIOS:")
+                    for scenario in failed[:3]:  # Show first 3
+                        name = scenario.get('scenario_name', 'Unknown')
+                        if len(name) > 60:
+                            name = name[:57] + "..."
+                        report.append(f"  • {name}")
+                    
+                    if len(failed) > 3:
+                        report.append(f"  ... and {len(failed) - 3} more")
+        
+        # Final status
+        status = final_output.get('status', 'unknown')
+        report.append("")
+        report.append("🏁 FINAL STATUS")
+        report.append("-" * 40)
+        status_emoji = "✅" if status == 'success' else "❌"
+        report.append(f"Overall Result: {status_emoji} {status.upper()}")
+        
+        # Code path
+        code_path = final_output.get('code_path', 'N/A')
+        if code_path and code_path != 'N/A':
+            report.append(f"Generated Code Location: {os.path.basename(code_path)}")
+        
+        return "\n".join(report)
