@@ -305,7 +305,9 @@ def main():
         if results['workflow_status'] == 'completed':
             print("\n📋 FINAL CODE EXECUTION REPORT:")
             print("=" * 60)
-            print(results['final_output'])
+            # Use the new formatted report instead of raw dictionary
+            formatted_report = workflow.format_final_execution_report(results['final_output'])
+            print(formatted_report)
             print(f"\n📂 All intermediate and final outputs saved in:")
             print(f"   {results['output_folder']}")
         else:
